@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D文字球体</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- 输入框容器 -->
+    <div class="input-container">
+        <input type="text" id="wordInput" placeholder="输入文字..." maxlength="20">
+        <button id="addBtn">添加</button>
+    </div>
+
+    <!-- 3D球体容器 -->
+    <div id="canvas-container"></div>
+
+    <!-- 统计信息 -->
+    <div class="stats">
+        <p>已收集文字: <span id="wordCount">0</span></p>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
