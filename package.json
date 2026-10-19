@@ -1,0 +1,12 @@
+{
+  "name": "inner-light",
+  "version": "2.0.0",
+  "private": true,
+  "description": "A dependency-free rotating word sphere with launch animations",
+  "scripts": {
+    "check": "node --check core.js && node --check effects.js && node --check app.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

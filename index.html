@@ -1,32 +1,71 @@
 <!doctype html>
 <html lang="zh-CN">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>INNER-LIGHT</title>
-        <link rel="stylesheet" href="style.css" />
-    </head>
-    <body>
-        <!-- 输入框容器 -->
-        <div class="input-container">
-            <input
-                type="text"
-                id="wordInput"
-                placeholder="输入文字..."
-                maxlength="20"
-            />
-            <button id="addBtn">添加</button>
-        </div>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#111225" />
+    <meta name="description" content="把此刻的念头，送进一颗立体旋转的星球。一个属于你的互动文字宇宙。" />
+    <title>心光 · INNER LIGHT</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23080e19'/%3E%3Cpath d='M32 10v44M10 32h44M16 16l32 32M48 16L16 48' stroke='%23b4ecd9' stroke-width='2'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="style.css" />
+    <script src="core.js" defer></script>
+    <script src="effects.js" defer></script>
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="site-header">
+        <a class="brand" href="index.html" aria-label="心光首页"><span class="brand-mark" aria-hidden="true">✳</span><span>心光 <span class="brand-en">INNER LIGHT</span></span></a>
+        <div class="header-actions"><span id="saveStatus" class="save-status">只属于你的宇宙</span><button id="libraryBtn" class="quiet-button" type="button" aria-haspopup="dialog">词语收藏 <span aria-hidden="true">↗</span></button></div>
+      </header>
 
-        <!-- 3D球体容器 -->
-        <div id="canvas-container"></div>
+      <main>
+        <section class="intro" aria-labelledby="pageTitle">
+          <p class="eyebrow"><span class="live-dot" aria-hidden="true"></span> SOUL-STYLE TAG PLANET</p>
+          <h1 id="pageTitle">发现你的<span>同频宇宙</span></h1>
+          <p class="intro-copy">滑动星球，让每一个念头相遇</p>
+        </section>
 
-        <!-- 统计信息 -->
-        <div class="stats">
-            <p>已收集: <span id="wordCount">0</span></p>
-        </div>
+        <section class="universe" aria-label="互动文字星球">
+          <div id="sphereStage" class="sphere-stage" tabindex="0" role="region" aria-label="旋转词球。拖动或使用方向键旋转。">
+            <div class="ambient-glow" aria-hidden="true"></div>
+            <div id="particleLayer" class="particle-layer" aria-hidden="true"></div>
+            <div id="wordLayer" class="word-layer"></div>
+            <svg id="flightSvg" class="flight-svg" aria-hidden="true"></svg>
+            <div id="effectLayer" class="effect-layer" aria-hidden="true"></div>
+            <div id="emptyState" class="empty-state" hidden><span aria-hidden="true">✧</span><p>宇宙安静，等待第一束光。</p></div>
+          </div>
+          <div class="sphere-caption"><span class="caption-rule" aria-hidden="true"></span><span id="interactionHint">滑动星球 · 遇见同频的念头</span><span class="caption-rule" aria-hidden="true"></span></div>
+          <div class="sphere-toolbar">
+            <p class="collection-stats"><strong id="wordCount">0</strong> 个念头<span class="stat-divider">/</span><strong id="totalCount">0</strong> 次共鸣</p>
+            <button id="enrichBtn" class="enrich-button" type="button" title="补充示例兴趣标签，保留你原有的词语和次数">丰富星球 ＋</button>
+          </div>
+        </section>
 
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-        <script src="app.js"></script>
-    </body>
+        <section class="composer-section" aria-label="发送一个念头">
+          <form id="wordForm" class="composer" novalidate>
+            <label class="sr-only" for="wordInput">想送进星球的文字，最多 20 个字</label>
+            <span class="composer-spark" aria-hidden="true">✦</span>
+            <input id="wordInput" type="text" placeholder="此刻，你在想什么？" autocomplete="off" spellcheck="false" aria-describedby="inputHelp feedback" />
+            <span id="charCount" class="char-count" aria-hidden="true">0 / 20</span>
+            <button id="sendBtn" class="send-button" type="submit"><span>送入星球</span><span class="send-arrow" aria-hidden="true">↗</span></button>
+          </form>
+          <div class="composer-meta"><p id="inputHelp">按 Enter 发射 · 相同的念头，会更闪亮</p><p id="feedback" class="feedback" role="status" aria-live="polite" aria-atomic="true"></p></div>
+        </section>
+      </main>
+      <footer class="site-footer"><span>让微小的光，慢慢聚成宇宙。</span><span class="footer-note">NO ACCOUNT. JUST YOU.</span></footer>
+    </div>
+
+    <dialog id="libraryDialog" class="library-dialog" aria-labelledby="libraryTitle">
+      <div class="dialog-heading"><div><p class="eyebrow">YOUR CONSTELLATION</p><h2 id="libraryTitle">收藏的念头</h2></div><button id="closeLibrary" class="icon-button" type="button" aria-label="关闭词语收藏">×</button></div>
+      <p class="dialog-description">每次共鸣，都会让它更闪亮。数据只保存在当前浏览器。</p>
+      <label class="sr-only" for="librarySearch">搜索收藏的词语</label><input id="librarySearch" class="library-search" type="search" placeholder="寻找一个念头…" />
+      <div id="libraryList" class="library-list"></div>
+      <p id="librarySummary" class="library-summary" role="status" aria-live="polite"></p>
+      <p id="libraryFeedback" role="status" aria-live="polite" aria-atomic="true"></p>
+      <div class="dialog-footer"><button id="resetBtn" class="quiet-button" type="button">恢复初始星球</button><button id="clearBtn" class="danger-button" type="button">清空词球</button></div>
+      <div id="confirmPanel" class="confirm-panel" hidden><p id="confirmText"></p><div><button id="cancelAction" class="quiet-button" type="button">取消</button><button id="confirmAction" aria-describedby="confirmText" class="danger-button" type="button">确认</button></div></div>
+    </dialog>
+    <noscript><div class="noscript-notice">请启用 JavaScript，让文字星球开始旋转。</div></noscript>
+  </body>
 </html>
