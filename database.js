@@ -55,7 +55,7 @@ function openDatabase(directory) {
     transaction(() => {
       if (get('SELECT slug FROM planets WHERE slug=?', slug)) return;
       const now = new Date().toISOString();
-      run('INSERT OR IGNORE INTO planets(slug,name,description,created_at,review_mode) VALUES(?,?,?,?,1)', slug,
+      run('INSERT OR IGNORE INTO planets(slug,name,description,created_at,review_mode) VALUES(?,?,?,?,0)', slug,
         slug === 'default' ? '同频宇宙' : slug, '每一个念头，都可能遇见同频的光。', now);
       if (seed) for (const item of Core.randomSamples()) run('INSERT OR IGNORE INTO words(planet,word,frequency,is_seed,created_at) VALUES(?,?,?,1,?)', slug, item.word, item.frequency, now);
     });
