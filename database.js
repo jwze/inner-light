@@ -108,17 +108,41 @@ function openDatabase(directory) {
         item: get('SELECT word,frequency FROM words WHERE planet=? AND word=?', slug, word) || { word, frequency: 0 }, createdAt: now };
     });
   }
-  function review(slug, id, decision, actor) {
+  function reviewBatch(slug, ids, decision, actor = 'system') {
+    if (!Array.isArray(ids) || !ids.length || ids.length > 100 || ids.some((id) => !Number.isSafeInteger(id) || id < 1) || new Set(ids).size !== ids.length || !['approved','rejected'].includes(decision)) {
+      throw Object.assign(new Error('需提供 1–100 个不重复的正整数编号和合法审核决定。'), { status: 422 });
+    }
     return transaction(() => {
-      const row = get('SELECT * FROM submissions WHERE planet=? AND id=?', slug, id);
-      if (!row) throw Object.assign(new Error('审核记录不存在。'), { status: 404 });
-      if (row.status !== 'pending') throw Object.assign(new Error('该记录已处理，请刷新列表。'), { status: 409 });
-      if (!['approved','rejected'].includes(decision)) throw Object.assign(new Error('审核决定不合法。'), { status: 422 });
-      if (decision === 'approved') addWord(slug, row.word);
-      run('UPDATE submissions SET status=?,reason=? WHERE id=?', decision, `人工审核：${actor}`, id);
-      run('INSERT INTO moderation_log(planet,action,word,created_at,actor) VALUES(?,?,?,?,?)', slug, decision, row.word, new Date().toISOString(), actor);
+      for (const id of ids) {
+        const row = get('SELECT * FROM submissions WHERE planet=? AND id=?', slug, id);
+        if (!row) throw Object.assign(new Error('审核记录不存在。'), { status: 404 });
+        if (row.status !== 'pending') throw Object.assign(new Error('该记录已处理，请刷新列表。'), { status: 409 });
+        if (decision === 'approved') addWord(slug, row.word);
+        run('UPDATE submissions SET status=?,reason=? WHERE id=?', decision, `人工审核：${actor}`, id);
+        run('INSERT INTO moderation_log(planet,action,word,created_at,actor) VALUES(?,?,?,?,?)', slug, decision, row.word, new Date().toISOString(), actor);
+      }
       run('UPDATE planets SET version=version+1 WHERE slug=?', slug);
-      return snapshot(slug);
+      return { ...snapshot(slug), count: ids.length };
+    });
+  }
+  function review(slug, id, decision, actor) {
+    return reviewBatch(slug, [id], decision, actor);
+  }
+  function moderateBatch(slug, words, action, actor = 'system') {
+    if (!Array.isArray(words) || !words.length || !['hide','restore'].includes(action)) throw Object.assign(new Error('需提供 1–160 个词语和 hide 或 restore。'), { status: 422 });
+    const normalized = words.map((word) => Core.validateWord(word));
+    if (normalized.some((item) => !item.ok)) throw Object.assign(new Error('词语不合法。'), { status: 422 });
+    const unique = [...new Set(normalized.map((item) => item.word))];
+    if (unique.length > Core.MAX_WORDS) throw Object.assign(new Error('单次最多处理 160 个不重复词语。'), { status:422 });
+    return transaction(() => {
+      for (const word of unique) {
+        const result = run('UPDATE words SET hidden=? WHERE planet=? AND word=?', action === 'hide' ? 1 : 0, slug, word);
+        if (!result.changes) throw Object.assign(new Error('词语不存在。'), { status: 404 });
+        run('INSERT INTO moderation_log(planet,action,word,created_at,actor) VALUES(?,?,?,?,?)', slug, action, word, new Date().toISOString(), actor);
+      }
+      if (stats(slug).wordCount > Core.MAX_WORDS) throw Object.assign(new Error('星球已满，无法恢复。'), { status: 409 });
+      run('UPDATE planets SET version=version+1 WHERE slug=?', slug);
+      return { ...snapshot(slug), count: unique.length };
     });
   }
   function moderate(slug, word, action, actor = 'system') {
@@ -180,9 +204,11 @@ function openDatabase(directory) {
   let secret = get("SELECT value FROM settings WHERE key='identity-secret'")?.value;
   const extra = require('./database-features').features({ get, all, run, transaction, snapshot });
   if (!secret) { run("INSERT OR IGNORE INTO settings(key,value) VALUES('identity-secret',?)", crypto.randomBytes(32).toString('hex')); secret = get("SELECT value FROM settings WHERE key='identity-secret'").value; }
-  return { filename, secret, ensure, snapshot, recent, stats, submit, moderate, rate, review, requestResult, ...extra,
+  return { filename, secret, ensure, snapshot, recent, stats, submit, moderate, moderateBatch, rate, review, reviewBatch, requestResult, ...extra,
     exists(slug) { return Boolean(get('SELECT slug FROM planets WHERE slug=?', slug)); },
-    listPlanets() { return all('SELECT slug,name FROM planets ORDER BY slug'); },
+    listPlanets() {
+      return all('SELECT slug,name,description,theme,review_mode AS reviewMode FROM planets ORDER BY slug').map((row) => ({ ...row, reviewMode:Boolean(row.reviewMode), stats:stats(row.slug), pendingCount:get("SELECT COUNT(*) AS n FROM submissions WHERE planet=? AND status='pending'", row.slug).n }));
+    },
     queue(slug) { return all("SELECT id,word,status,reason,created_at AS createdAt FROM submissions WHERE planet=? AND status IN ('pending','rejected') ORDER BY id DESC LIMIT 500", slug); },
     visit(slug, hash) {
       const now = new Date().toISOString();
@@ -198,7 +224,7 @@ function openDatabase(directory) {
     },
     updatePlanet(slug, settings) {
       return transaction(() => {
-        run('UPDATE planets SET name=?,theme=?,review_mode=?,version=version+1 WHERE slug=?', settings.name, settings.theme, settings.reviewMode ? 1 : 0, slug);
+        run('UPDATE planets SET name=?,description=?,theme=?,review_mode=?,version=version+1 WHERE slug=?', settings.name, settings.description, settings.theme, settings.reviewMode ? 1 : 0, slug);
         run('INSERT INTO moderation_log(planet,action,created_at,actor) VALUES(?,?,?,?)', slug, 'settings', new Date().toISOString(), settings.actor || 'system');
         return snapshot(slug);
       });

@@ -4,6 +4,31 @@ const Core = require('./core');
 function features({ get, all, run, transaction, snapshot }) {
   const invalid = (message) => { throw Object.assign(new Error(message), { status: 422 }); };
   const digest = (value) => crypto.createHash('sha256').update(value).digest('hex');
+  function createPlanet(slug, { name, description = '', theme = 'nebula', reviewMode = false, seed = true, actor = 'system' }) {
+    return transaction(() => {
+      if (get('SELECT slug FROM planets WHERE slug=?', slug)) throw Object.assign(new Error('星球已存在。'), { status:409 });
+      if (get('SELECT COUNT(*) AS n FROM planets').n >= 100) throw Object.assign(new Error('星球数量已达上限。'), { status:429 });
+      const now = new Date().toISOString();
+      run('INSERT INTO planets(slug,name,description,theme,review_mode,created_at) VALUES(?,?,?,?,?,?)', slug, name, description, theme, reviewMode ? 1 : 0, now);
+      if (seed) for (const item of Core.randomSamples()) run('INSERT INTO words(planet,word,frequency,is_seed,created_at) VALUES(?,?,?,1,?)', slug, item.word, item.frequency, now);
+      run('INSERT INTO moderation_log(planet,action,created_at,actor) VALUES(?,?,?,?)', slug, 'create', now, actor);
+      return snapshot(slug);
+    });
+  }
+  function upsertWord(slug, word, frequency, actor = 'system') {
+    const checked = Core.validateWord(word);
+    if (!checked.ok || !Number.isInteger(frequency) || frequency < 1 || frequency > Core.MAX_FREQUENCY) invalid('词语或频率不合法。');
+    return transaction(() => {
+      const current = get('SELECT hidden FROM words WHERE planet=? AND word=?', slug, checked.word);
+      if (!current && get('SELECT COUNT(*) AS n FROM words WHERE planet=? AND hidden=0', slug).n >= Core.MAX_WORDS) throw Object.assign(new Error('星球已满，无法加入新词语。'), { status:409 });
+      const now = new Date().toISOString();
+      run(`INSERT INTO words(planet,word,frequency,is_seed,created_at) VALUES(?,?,?,0,?) ON CONFLICT(planet,word)
+        DO UPDATE SET frequency=excluded.frequency,is_seed=0`, slug, checked.word, frequency, now);
+      run('INSERT INTO moderation_log(planet,action,word,created_at,actor) VALUES(?,?,?,?,?)', slug, 'upsert', checked.word, now, actor);
+      run('UPDATE planets SET version=version+1 WHERE slug=?', slug);
+      return snapshot(slug);
+    });
+  }
   function analytics(slug, days = 7) {
     const end = new Date(); end.setUTCHours(0, 0, 0, 0);
     const start = new Date(end.getTime() - (days - 1) * 86400000).toISOString();
@@ -83,6 +108,6 @@ function features({ get, all, run, transaction, snapshot }) {
       return snapshot(slug);
     });
   }
-  return { analytics, relations, importData };
+  return { analytics, relations, importData, createPlanet, upsertWord };
 }
 module.exports = { features };

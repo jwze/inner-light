@@ -1,64 +1,93 @@
-# 扩展功能验收
+# 功能范围与验收记录
 
-本次已实现并验证此前列出的扩展能力。功能边界与真实供应商配置状态如下。
+本文件区分已有功能、单实例部署调整与实际验收记录。后台管理能力已实现；这不代表所有界面和交互路径均已验收。历史检查单独列出，不沿用旧版双实例测试结论，也不将其视为本轮改动的验证结果。
 
-| 扩展 | 交付状态 | 验收证据 |
-|---|---|---|
-| 本地二维码 | 已完成 | `qrcode` 浏览器 bundle，浏览器生成 320×320 PNG Blob |
-| PNG 星球海报 | 已完成 | 浏览器生成 1080×1440 PNG Blob，含当前词球、统计、二维码和 URL |
-| 日/周/历史趋势 | 已完成 | `/analytics?days=7|30|90`，UTC 每日补零，前后周期热度 delta，浏览器 SVG 图表+表格 |
-| 词语关系图 | 已完成 | `/relations`，同一匿名访客 30 分钟共现，节点/边上限，浏览器 SVG 网络图+表格 |
-| PWA | 已完成 | manifest、Service Worker、PNG/SVG icon、公共 shell allowlist 缓存；后台/API 不缓存 |
-| 离线待提交队列 | 已完成 | IndexedDB、稳定 requestId、IDB 跨标签租约、429/网络退避、Service Worker Background Sync、发送箱编辑/删除 |
-| 请求幂等 | 已完成 | SQLite `(planet, visitor_hash, request_id)` 唯一索引；响应丢失重试不重复计数 |
-| 待审核流程 | 已完成 | reviewMode、pending/approved/rejected、只审核一次、审计 actor、公开端只显示 approved |
-| 第三方语义审核适配 | 已完成适配器 | OpenAI-compatible `results[].flagged` 和自有网关 decision 协议；超时/5xx/非法响应故障闭合为 pending |
-| Redis 跨实例广播 | 已完成 | `realtime.js` Redis Pub/Sub；两 Node 进程和 Docker 两副本共享 SQLite、SSE 实测跨实例广播 |
-| 多角色管理员 | 已完成 | owner/moderator/viewer、房间范围、scrypt 密码、12h HttpOnly 会话、登录限流、最后 owner 保护 |
-| CSV 导出 | 已完成 | RFC 风格引号/逗号处理，公式前缀注入防护，浏览器下载接口 |
-| CSV 导入 | 已完成 | word/frequency/hidden 校验、限制、事务、公式前缀还原 |
-| JSON 导入合并 | 已完成 | sourceKey 去重、词频取最大、审计导入、事务回滚 |
-| JSON 替换恢复 | 已完成 | slug 二次确认、事务清空并恢复词库/历史，管理员和密钥不删除 |
-| 审核/导入审计 | 已完成 | moderation_log actor、设置/屏蔽/审核/导入记录 |
+## 部署与实时更新
 
-## 验收命令与结果
+- 用户当前禁止代理在本机执行任何 Docker 相关操作，包括只读查询、配置校验及容器或守护进程交互；任务结束后也不得启动 Docker，直到用户明确更改约束。允许修改部署配置与教程，文档中的部署命令仅供用户自行执行。
+- Compose 仅包含一个 `inner-light` 应用服务，继续挂载原有的 `planet-data:/app/data`，保持 Compose 项目名即可沿用现有数据卷。
+- SSE 由单个 Node.js 进程向本地连接广播；客户端通过重连快照和轮询恢复状态。
+- 旧双实例方案没有负载均衡器，用户需分别访问两个端口。现已移除 replica、Redis 服务、Redis 环境变量及 npm 依赖，统一为单实例入口。
+- `MODERATION_TIMEOUT_MS`、提交限流、可信代理和安全 Cookie 选项继续由 Compose 转发。
+- 不再提供跨实例广播或多服务器数据库复制。SQLite WAL 数据应使用本机磁盘；升级前备份，避免删除 `planet-data` 卷。
+
+## 已有功能范围
+
+| 功能 | 实现范围与边界 |
+|---|---|
+| 词球与发射 | 发射期间持续旋转；已有词语坐标稳定；新词正面随机落点后随球旋转，重复词保留原位并提供私人到达反馈；待审、驳回和离线队列不提前公开 |
+| 本地二维码与海报 | `qrcode` 本地 bundle；浏览器生成二维码和 1080×1440 星球 PNG，包含当前 URL |
+| 趋势与词语关系 | 7/30/90 天 UTC 趋势；匿名访客 30 分钟内共同提交统计，限制节点和边数量 |
+| PWA 与离线队列 | 公共应用壳缓存、IndexedDB 队列、稳定 requestId、跨标签租约、重试与发送箱；后台/API 响应不缓存 |
+| 请求幂等 | SQLite `(planet, visitor_hash, request_id)` 唯一约束，防止同一请求重复计数 |
+| 审核流程 | pending/approved/rejected；待审及驳回不进入公开统计；屏蔽与恢复保留词频 |
+| 第三方审核适配 | 支持 OpenAI-compatible `results[].flagged` 及自有网关 decision；异常应进入 pending，仍需实际环境验证 |
+| 多角色管理员 | owner/moderator/viewer、星球范围、scrypt 密码、HttpOnly 会话、登录限流及最后 owner 保护 |
+| CSV / JSON 备份与恢复 | CSV 词库；JSON 词频、历史、设置、审核记录；合并/替换、输入校验与事务；不替代完整数据库备份 |
+| 操作记录 | 设置、屏蔽、审核及导入记录包含操作者 |
+
+## 已实现的后台与待验收项
+
+分区管理台已接通以下能力；此前的接口检查与尚未完成的浏览器验收分开记录：
+
+- 总览与 owner 专用系统信息。
+- 显式创建星球与切换现有星球，包含描述、主题、预审和示例词设置；加载未知 slug 不隐式创建。
+- 创建词条并指定词频、编辑词频、批量屏蔽及恢复。
+- 单条及批量审核通过或驳回，保留权限校验、事务及重复审批冲突处理。
+- 可搜索、分页的提交历史与审计列表。
+- owner 重置账户密码并撤销旧会话。
+- 备份、导入与恢复入口，保留数据校验及替换确认。
+
+已实现的接口包括：
 
 ```text
-npm run build                 PASS
-npm run check                 PASS
-npm audit --omit=dev         0 vulnerabilities
-docker compose build         PASS
+POST /api/admin/planets {slug,name,description,theme,reviewMode,seed}
+POST /api/admin/words?planet=default {word,frequency}
+POST /api/admin/words/batch?planet=default {words,action:"hide"|"restore"}
+POST /api/admin/reviews/batch?planet=default {ids,decision:"approved"|"rejected"}
+GET  /api/admin/system  # 仅 owner
 ```
 
-临时集成测试已覆盖：
+桌面与手机的完整浏览器视觉、交互及布局验收尚未完成；接口检查不能替代浏览器验收。
 
-- 语义供应商：通过、标记、直接拒绝、HTTP 500、超时
-- 人工审核通过/驳回、重复审批冲突
-- requestId 幂等
-- analytics / relations
-- owner/moderator/viewer 角色、房间范围、会话吊销、最后 owner 保护
-- JSON merge/replace、错误输入事务不改变版本、CSV roundtrip 和公式注入防护
-- 两个 Node 实例 / 两个 Docker 副本通过 Redis Pub/Sub 广播 SSE
-- PWA shell 缓存 allowlist、无 API/admin 缓存
-- 浏览器二维码 PNG、海报 PNG、趋势图、关系图、离线发送箱和断网后自动重试
+## 发射行为与验证边界
 
-## 第三方审核的必要外部条件
+本轮取消旧的整球自动聚焦和约 4.5 秒停留。发射过程中词球继续正常旋转；新增或移除词语、SSE、轮询、发送失败及离线排队都不能重排或重置已有词语的球面坐标。
 
-代码已提供第三方适配器，但真实供应商请求必须由部署者设置：
+新公开词语从正面随机落点加入，并随词球继续旋转，轨迹、撞击反馈和词语跟随同一落点。重复词保留原位，用短暂的私人正面文字和脉冲提供可读反馈，不新增虚假公开词条或提交记录。待审、驳回及离线排队只提供私人反馈。
+
+本轮临时回归检查已覆盖新词正面落点、持续旋转、原节点与坐标不变、满球背面词再次共鸣、待审/驳回/排队/失败、SSE 先到及旧 HTTP 响应、慢响应和远端增删。检查也确认 SSE 到达即绑定真实节点，迟到确认的到达波纹与最终公开词语共用落点。
+
+分享弹窗的二维码预览保持正方形，并清除二维码组件生成的固定内联显示尺寸；桌面双栏、手机切换预览，移除说明段落并调整按钮。海报 `drawPoster()` 与原版逐字一致，仍为 1080×1440。已完成生成、下载、切换等内存 DOM 操作检查；真实浏览器的布局与滚动条情况仍待验收。
+
+本轮通过资源构建、语法检查、13 组管理接口检查、6 组词球行为回归及本机独立测试服务的页面/资源检查。未执行任何本机 Docker 操作。浏览器工具在参数校验阶段报错，未完成真实浏览器视觉验收。
+
+## 历史检查记录与本轮边界
+
+此前已执行的检查（非本次文档任务新运行）：
+
+| 检查 | 结果与范围 |
+|---|---|
+| 资源构建、JavaScript 语法与 manifest 检查 | 上轮通过；不代表业务或视觉验收 |
+| 管理接口临时检查 | 上轮 13 组通过，覆盖权限、显式创建、事务回滚、容量、密码重置及 SSE 等接口行为 |
+| 词球临时回归检查 | 上轮模拟 DOM 与时钟中的旧发送可见性检查通过；不证明本轮持续旋转与坐标稳定效果 |
+| 更早的 Compose 配置解析 | 历史记录为通过，不能据此断言当前配置或容器运行状态；本轮禁止运行 Docker 校验 |
+
+真实第三方审核、当前容器构建运行和完整浏览器验收均无本轮通过结论。旧版双副本广播及浏览器结果不作为当前版本的验收证据。
+
+本轮验证后已按用户约定删除管理接口与词球临时检查脚本及对应 npm 入口；保留 `npm run check`（语法与 manifest）和 `npm run build`（资源构建）作为长期工具。
+
+## 第三方审核与数据边界
+
+真实供应商调用由部署者配置：
 
 ```dotenv
 MODERATION_URL=https://api.openai.com/v1/moderations
 MODERATION_API_KEY=...
 MODERATION_MODEL=omni-moderation-latest
+MODERATION_TIMEOUT_MS=5000
 ```
 
-本仓库不包含任何真实密钥，也不能在没有用户账户/endpoint/key 的情况下声称已完成真实供应商网络验收。未配置时仅遵循房间的人工预审设置（默认关闭）；配置后按上表协议运行。
+仓库不包含真实密钥；没有供应商账户、endpoint 和 key 时不能声称完成真实供应商验收。未配置 URL 时只使用房间人工预审设置，新房间默认关闭预审；管理员可手动开启。
 
-第三方适配器保留但当前未启用。按用户最新选择，新房间及当前运行房间默认关闭人工预审，提交直接公开；管理员仍可在后台单独开启预审。
-
-## 明确边界
-
-- Redis Pub/Sub 是跨实例实时广播，不是历史消息队列；断线依靠 SSE 快照和前端轮询校准。
-- SQLite 共享卷适用于单机/同一 Docker 主机多进程；多主机需 PostgreSQL 或专门数据库，不应把 WAL 文件放网络文件系统。
-- 词语关系是匿名共现统计，不是语义相似度、身份关系或推荐结论。
-- PWA 发送箱是本设备队列，不是跨设备云端草稿；清理浏览器数据会删除队列。
+词语关系属于匿名共现统计，不代表语义相似或身份关系。PWA 发送箱只保存在当前设备，清理浏览器数据会删除队列。完整灾备（含账户与密钥）使用 SQLite Backup API，或停止服务后复制数据库；不能忽略正在写入的 WAL 文件。

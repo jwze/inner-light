@@ -28,6 +28,60 @@
   let rings = [];
   const MAX_FLIGHTS = 8, MAX_IMPACTS = 5;
   let renderMatrix = [1, 0, 0, 0, 1, 0, 0, 0, 1];
+  let pendingSubmission = null;
+  let layoutInitialized = false;
+  let arrivalEchoes = [];
+  function screenToSphere(point) {
+    // The inverse of an orthogonal rotation is its transpose.
+    const m = renderMatrix;
+    return { x: m[0] * point.x + m[3] * point.y + m[6] * point.z,
+      y: m[1] * point.x + m[4] * point.y + m[7] * point.z,
+      z: m[2] * point.x + m[5] * point.y + m[8] * point.z };
+  }
+  function showArrivalEcho(submission, point = screenToSphere(submission.screenPoint)) {
+    if (submission.echoShown) return;
+    submission.echoShown = true;
+    if (arrivalEchoes.length >= MAX_FLIGHTS) arrivalEchoes.shift().element.remove();
+    const element = document.createElement('div');
+    element.className = 'flight-word arrival-echo';
+    element.setAttribute('aria-hidden', 'true');
+    const label = document.createElement('span');
+    label.className = 'comet-label';
+    label.textContent = submission.word;
+    element.append(label);
+    $('effectLayer').append(element);
+    arrivalEchoes.push({ element, point: { ...point }, elapsed: 0, duration: 2 });
+    wake();
+  }
+  function bindSubmittedNode(submission, node) {
+    for (const flight of flights) if (flight.submission === submission) flight.node = node;
+    if (submission.landed && submission.landedNode !== node) {
+      node.pulse = 1;
+      if (!reduced) createImpact(node.point);
+      submission.landedNode = node;
+    }
+  }
+  function confirmSubmission(submission) {
+    const node = entries.get(submission.word);
+    if (!node) return;
+    submission.approved = true;
+    node.pulse = 1;
+    if (submission.isNew) bindSubmittedNode(submission, node);
+    // Existing words keep their sphere coordinates; a private arrival label provides front feedback.
+    if (!submission.isNew && submission.landed) showArrivalEcho(submission);
+    wake();
+  }
+  function updateArrivalEchoes(dt) {
+    arrivalEchoes = arrivalEchoes.filter(echo => {
+      echo.elapsed += dt;
+      const t = echo.elapsed / echo.duration;
+      if (t >= 1) { echo.element.remove(); return false; }
+      const at = projectEffect(echo.point, 1.025);
+      echo.element.style.transform = `translate3d(${at.x}px,${at.y}px,0) translate(-50%,-50%)`;
+      echo.element.style.opacity = String(Math.min(1, (1 - t) * 3) * C.clamp((at.z + .1) / .5, 0, 1));
+      return true;
+    });
+  }
   let chargeGlow = 0;
   let width = 1, height = 1, radius = 100, focal = 700;
   let rotationX = Math.random() * Math.PI * 2, rotationY = Math.random() * Math.PI * 2;
@@ -113,8 +167,10 @@
     let node = entries.get(item.word);
     if (!node) {
       if (entries.size >= C.MAX_WORDS) return;
-      node = createNode(item, nodes.length);
-      redistribute();
+      const ownWord = pendingSubmission?.word === item.word && pendingSubmission.isNew;
+      const point = ownWord ? screenToSphere(pendingSubmission.screenPoint) : vacantSpherePoint();
+      node = createNode(item, nodes.length, point);
+      if (ownWord) bindSubmittedNode(pendingSubmission, node);
       if (animate) startFlight(node, true);
     } else {
       node.frequency = item.frequency;
@@ -136,8 +192,9 @@
       for (const node of removed) { node.element.remove(); entries.delete(node.word); }
       nodes = nodes.filter((node) => names.has(node.word));
     }
-    for (const item of persistedEntries) applyServerItem(item, item.word === animateWord);
-    if (removed.length) redistribute();
+    if (!layoutInitialized && !pendingSubmission) replaceEntries(persistedEntries);
+    else for (const item of persistedEntries) applyServerItem(item, item.word === animateWord);
+    layoutInitialized = true;
     updatePublicStats(payload.stats || {});
     updateRecent(payload.recent || []);
     if (payload.planet) {
@@ -170,7 +227,7 @@
         let cached;
         try { cached = JSON.parse(storage?.getItem(STORAGE_KEY) || "null"); } catch (_) { /* ignore invalid cache */ }
         if (cached?.items && cached?.planet?.slug === PLANET_SLUG) applyPlanetSnapshot(cached, null, true);
-        else { replaceEntries(previewEntries); updatePublicStats({ totalSubmissions: 0, todaySubmissions: 0, activeVisitors: 0, uniqueVisitors: 0 }); updateRecent([]); }
+        else { updatePublicStats({ totalSubmissions: 0, todaySubmissions: 0, activeVisitors: 0, uniqueVisitors: 0 }); updateRecent([]); }
       }
       announce(`${error.message} 当前可离线保存到发送箱，联网后自动提交。`, true);
       return false;
@@ -195,23 +252,23 @@
     eventSource.onerror = () => { streamConnected = false; setConnection("offline", "实时连接中断 · 正在重连"); };
   }
 
-  async function submitToServer(word, isNew) {
+  async function submitToServer(submission) {
+    const { word, isNew } = submission;
     submitting = true;
     updateSubmitAvailability();
     try {
       const payload = await window.InnerLightOffline.submit(PLANET_SLUG, word);
       if (payload.queued) {
-        replaceEntries(persistedEntries);
         announce(`「${word}」已安全保存到发送箱；待发送或被拒绝的内容可在发送箱中查看。`);
       } else {
         applyPlanetSnapshot(payload);
+        if (payload.status === 'approved') confirmSubmission(submission);
         announce(payload.status === "pending" ? `「${word}」已送达，等待审核。` : payload.status === "rejected" ? `「${word}」未通过审核：${payload.reason || "内容不适合公开"}` : `「${word}」${isNew ? "已加入公共星球" : `· 第 ${payload.item.frequency} 次共鸣`}`);
       }
     } catch (error) {
-      replaceEntries(persistedEntries);
       if (!input.value) { input.value = word; updateInputCount(); }
       announce(`${error.message} 未能保存到发送箱，请勿关闭页面。`, true);
-    } finally { submitting = false; updateSubmitAvailability(); }
+    } finally { pendingSubmission = null; submitting = false; updateSubmitAvailability(); }
   }
 
 
@@ -232,7 +289,7 @@
     node.h = size * 1.3 + 8;
   }
 
-  function createNode(item, index) {
+  function createNode(item, index, point = C.spherePoint(index, Math.max(entries.size, 1), 1)) {
     const element = document.createElement("button");
     element.type = "button";
     element.className = "word-tag";
@@ -244,17 +301,34 @@
     label.textContent = item.word;
     element.append(label);
     layer.append(element);
-    const node = { ...item, element, label, point: C.spherePoint(index, Math.max(entries.size, 1), 1), target: null, layoutOrder: Math.random(), pulse: 0, pending: 0, opacity: 0, x: width / 2, y: height / 2, scale: 1 };
+    const node = { ...item, element, label, point: { ...point }, target: { ...point }, layoutOrder: Math.random(), pulse: 0, pending: 0, opacity: 0, x: width / 2, y: height / 2, scale: 1 };
     entries.set(item.word, node);
     nodes.push(node);
     setLabelMetrics(node, index);
     return node;
   }
 
-  function redistribute(immediate = false) {
+  function vacantSpherePoint() {
+    // Fill gaps incrementally instead of redistributing every existing label on each snapshot.
+    let best = null, bestGap = -1;
+    for (let index = 0; index < 64; index++) {
+      const z = Math.random() * 2 - 1, angle = Math.random() * Math.PI * 2;
+      const r = Math.sqrt(1 - z * z);
+      const point = { x: Math.cos(angle) * r, y: Math.sin(angle) * r, z };
+      let gap = 4;
+      for (const node of nodes) {
+        const p = node.target;
+        gap = Math.min(gap, (point.x - p.x) ** 2 + (point.y - p.y) ** 2 + (point.z - p.z) ** 2);
+      }
+      if (gap > bestGap) { best = point; bestGap = gap; }
+    }
+    return best;
+  }
+
+  function distributeInitialWords() {
     nodes.slice().sort((a, b) => a.layoutOrder - b.layoutOrder).forEach((node, index) => {
       node.target = C.spherePoint(index, nodes.length, 1);
-      if (immediate || reduced) node.point = { ...node.target };
+      node.point = { ...node.target };
     });
     wake();
   }
@@ -279,8 +353,8 @@
     const clean = C.createEntries(items);
     // Pre-size the collection so initialization uses its final distribution.
     clean.forEach((item) => entries.set(item.word, item));
-    clean.forEach(createNode);
-    redistribute(true);
+    clean.forEach((item, index) => createNode(item, index));
+    distributeInitialWords();
     stats();
   }
 
@@ -316,7 +390,7 @@
     impact.surface.remove();
   }
 
-  function startFlight(node, isNew, local = false) {
+  function startFlight(node, isNew, local = false, submission = null) {
     if (reduced) return;
     if (flights.length >= MAX_FLIGHTS) land(flights.shift(), false);
     const element = document.createElement("div");
@@ -338,7 +412,7 @@
     });
     if (isNew) { node.pending++; node.element.classList.add("arriving"); }
     chargeGlow = 1;
-    flights.push({ node, local, element, path, halo, core, lock, dust, elapsed: 0, duration: 1.22, isNew, bend: (Math.random() < .5 ? -1 : 1), seed: Math.random() * Math.PI * 2 });
+    flights.push({ node, local, submission, element, path, halo, core, lock, dust, elapsed: 0, duration: 1.22, isNew, bend: (Math.random() < .5 ? -1 : 1), seed: Math.random() * Math.PI * 2 });
   }
 
   function land(flight, withImpact = true) {
@@ -347,11 +421,20 @@
     flight.path.remove();
     if (flight.isNew) node.pending = Math.max(0, node.pending - 1);
     if (!flight.local && !node.pending) node.element.classList.remove("arriving");
+    if (flight.submission) {
+      flight.submission.landed = true;
+      flight.submission.landedNode = withImpact && entries.get(node.word) === node ? node : null;
+      if (withImpact && flight.submission.approved && !flight.submission.isNew) showArrivalEcho(flight.submission, node.point);
+    }
     if (reduced || !withImpact || (!flight.local && entries.get(node.word) !== node)) return;
     const publicNode = entries.get(node.word);
     if (publicNode) publicNode.pulse = 1;
+    createImpact(node.point);
+  }
+
+  function createImpact(point) {
     if (rings.length >= MAX_IMPACTS) removeImpact(rings.shift());
-    const normal = FX.unit(node.point);
+    const normal = FX.unit(point);
     const element = document.createElement("div");
     element.className = "arrival-ring";
     const flash = document.createElement("i");
@@ -386,10 +469,16 @@
     }
     // A private visual target is not a public word. Fast pending/queued/rejected
     // responses may reconcile the collection immediately, but must not erase this flight.
-    const point = node ? { ...node.point } : FX.unit({ x: renderMatrix[6], y: renderMatrix[7], z: renderMatrix[8] });
-    startFlight({ word, point }, false, true);
+    const angle = Math.random() * Math.PI * 2;
+    const offset = .12 + Math.random() * .24;
+    const screenPoint = { x: Math.cos(angle) * offset, y: Math.sin(angle) * offset,
+      z: Math.sqrt(1 - offset * offset) };
+    const point = screenToSphere(screenPoint);
+    const submission = { word, isNew, screenPoint, landed: reduced, approved: false, echoShown: false };
+    pendingSubmission = submission;
+    startFlight({ word, point, screenPoint }, false, true, submission);
     announce(`「${word}」正在送入公共星球…`);
-    submitToServer(word, isNew);
+    submitToServer(submission);
     wake();
     return true;
   }
@@ -413,6 +502,7 @@
       flight.elapsed += dt;
       const t = C.clamp(flight.elapsed / flight.duration, 0, 1);
       const p = FX.cometProgress(flight.elapsed, flight.duration);
+      if (flight.local && flight.node.screenPoint) flight.node.point = screenToSphere(flight.node.screenPoint);
       const destination = flight.local ? projectEffect(flight.node.point) : flight.node;
       const ex = destination.x, ey = destination.y;
       flight.lock.setAttribute("cx", String(ex));
@@ -523,7 +613,6 @@
         matrix[row * 3 + column] = viewRotation[row * 3] * base[column] + viewRotation[row * 3 + 1] * base[3 + column] + viewRotation[row * 3 + 2] * base[6 + column];
       }
     }
-    renderMatrix = matrix;
     let settling = false;
     for (const node of nodes) {
       const p = node.point, target = node.target;
@@ -534,6 +623,10 @@
         p.y = C.damp(p.y, target.y, 7, dt);
         p.z = C.damp(p.z, target.z, 7, dt);
       }
+    }
+    renderMatrix = matrix;
+    for (const node of nodes) {
+      const p = node.point;
       // Rotate using shared per-frame trigonometry, no per-label Vector allocation.
       const x1 = matrix[0] * p.x + matrix[1] * p.y + matrix[2] * p.z;
       const y = matrix[3] * p.x + matrix[4] * p.y + matrix[5] * p.z;
@@ -605,7 +698,8 @@
     const settling = render(dt);
     updateFlights(dt);
     updateImpacts(dt);
-    if (moving || settling || flights.length || rings.length || chargeGlow > 0 || running) wake();
+    updateArrivalEchoes(dt);
+    if (moving || settling || flights.length || rings.length || arrivalEchoes.length || chargeGlow > 0 || running) wake();
     else lastTime = null;
   }
 

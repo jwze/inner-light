@@ -64,6 +64,8 @@ h1 span { color: var(--mint); }
 .comet-label { display: block; overflow: hidden; text-overflow: ellipsis; position: relative; z-index: 1; }
 .flight-word::before { content: ""; position: absolute; inset: -15px -5px; background: radial-gradient(ellipse, #d0ffe84d, #49eacb28 35%, transparent 70%); transform: scale(calc(.8 + var(--comet-energy, 0) * .7)); z-index: -1; }
 .flight-word::after { content: ""; position: absolute; inset: 0; border: 1px solid #a6ffe882; border-radius: 50%; box-shadow: 0 0 14px #6fffdc66, inset 0 0 14px #6fffdc22; transform: rotate(-15deg) scale(1.05, 1.25); }
+.arrival-echo { padding: 5px 12px; font-size: 17px; }
+.arrival-echo::after { display: none; }
 .arrival-ring { position: absolute; left: 0; top: 0; width: 0; height: 0; will-change: transform; }
 .impact-flare { position: absolute; left: -35px; top: -35px; width: 70px; height: 70px; border-radius: 50%; background: radial-gradient(circle, #e7fff7b0, #7bffe544 24%, transparent 65%); transform: scale(var(--burst-scale, 1)); }
 .impact-flare::before, .impact-flare::after { content: ""; position: absolute; inset: 33px -20px; background: linear-gradient(90deg, transparent, #e5fff6, transparent); box-shadow: 0 0 8px #a0ffe4; }

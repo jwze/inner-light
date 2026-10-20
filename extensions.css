@@ -14,9 +14,33 @@
 .ext-dialog input, .ext-dialog select { background: #0e1723; color: #ecf7f5; border: 1px solid #9bcfc655; border-radius: 8px; padding: 10px; min-height: 44px; max-width: 100%; font: inherit; }
 .ext-dialog select { margin-left: 8px; }
 .ext-url { width: 100%; }
-.ext-share-preview { display: grid; grid-template-columns: minmax(100px, 1fr) minmax(180px, 1.6fr); gap: 20px; align-items: center; margin: 20px 0; }
-.ext-share-preview canvas { display: block; max-width: 100%; width: 100%; height: auto; border-radius: 8px; border: 1px solid #aecfc633; }
-.ext-share-preview canvas:first-child { max-width: 280px; margin: auto; }
+.ext-share-dialog { --share-image-height: clamp(96px, calc(100dvh - 380px), 300px); width: min(720px, calc(100% - 24px)); padding: 24px; background: radial-gradient(ellipse at 15% 0, #25443c66, transparent 60%), #111c27; border-color: #a4edce38; border-radius: 26px; }
+.ext-share-dialog .ext-heading { margin-bottom: 16px; }
+.ext-share-dialog .ext-heading h2 { color: #dcf9ed; font-size: 21px; letter-spacing: .06em; }
+.ext-share-dialog .ext-close { background: #b6f1dc08; border-color: #b6f1dc26; color: #bfd8d0; cursor: pointer; transition: background .18s, transform .18s; }
+.ext-share-dialog .ext-close:active { transform: scale(.92); }
+.ext-share-preview { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.ext-share-card { display: flex; flex-direction: column; gap: 12px; min-width: 0; margin: 0; padding: 14px; border: 1px solid #b7ecdc1c; border-radius: 20px; background: linear-gradient(150deg, #c3ffe90a, #080f1b33); }
+.ext-share-card-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; }
+.ext-share-dialog .ext-share-card-heading h3 { margin: 0; color: #c0dcd4; font-size: 13px; font-weight: 500; letter-spacing: .08em; }
+.ext-share-image { display: grid; place-items: center; height: var(--share-image-height); min-width: 0; }
+.ext-share-image canvas { display: block; flex: none; max-width: 100%; height: auto; object-fit: contain; border: 0; box-shadow: 0 8px 24px #0003; }
+.ext-share-qr canvas { width: min(100%, 220px, var(--share-image-height)); aspect-ratio: 1; border-radius: 12px; background: #fff; }
+.ext-share-poster canvas { width: min(100%, calc(var(--share-image-height) * .75)); aspect-ratio: 3 / 4; border-radius: 7px; }
+.ext-share-dialog .ext-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 10px 16px; border: 1px solid #b0e8d72e; border-radius: 999px; background: linear-gradient(180deg, #9edfc01a, #9edfc009); color: #d5eee5; font-size: 13px; font-weight: 500; line-height: 1.4; cursor: pointer; box-shadow: inset 0 1px #e1fff20a, 0 3px 8px #0002; transition: background .18s, border-color .18s, box-shadow .18s, transform .18s; }
+.ext-share-dialog .ext-button:hover:not(:disabled) { border-color: #b7f5d96b; background: #9edfc025; transform: translateY(-1px); box-shadow: inset 0 1px #e1fff214, 0 5px 14px #0003; }
+.ext-share-dialog .ext-button:active:not(:disabled) { transform: translateY(1px) scale(.98); box-shadow: inset 0 2px 5px #0002; }
+.ext-share-dialog .ext-button:disabled { cursor: wait; opacity: .45; }
+.ext-share-dialog .ext-share-download { width: 100%; }
+.ext-share-dialog .ext-share-primary { color: #153d30; border-color: #b8f6d9; background: linear-gradient(135deg, #c3f9dc, #8eddbb); box-shadow: inset 0 1px #fff6, 0 4px 16px #75d8ae16; }
+.ext-share-dialog .ext-share-primary:hover:not(:disabled) { color: #12382b; border-color: #d3ffe8; background: linear-gradient(135deg, #d7ffe8, #a7efcc); }
+.ext-share-dialog .ext-share-refresh { flex: none; width: 44px; padding: 0; font-size: 23px; color: #b2e1d0; }
+.ext-share-dialog .ext-share-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 16px 0 0; padding-top: 16px; border-top: 1px solid #b7ecdc1c; }
+.ext-share-dialog .ext-share-native { border-color: #b5f1d747; color: #bff2d8; }
+.ext-share-switcher { display: none; }
+.ext-share-dialog .ext-status { min-height: 0; margin: 10px 0 0; font-size: 12px; line-height: 1.5; }
+.ext-share-dialog .ext-status:empty { display: none; }
+.ext-share-dialog .ext-url { margin-top: 12px; }
 .ext-chart, .ext-network { display: block; width: 100%; height: auto; background: #0c14214d; border-radius: 12px; margin: 12px 0; }
 .ext-gridline { stroke: #9bcfc633; }
 .ext-axis { fill: #afc7ce; font: 12px sans-serif; }
@@ -41,9 +65,20 @@
 .header-actions:has(#openShareTools) { flex-wrap: wrap; column-gap: 18px; row-gap: 0; }
 @media (max-width: 540px) {
   .ext-dialog { padding: 18px; max-height: calc(100dvh - 24px); }
-  .ext-share-preview { grid-template-columns: 1fr; }
-  .ext-share-preview canvas:first-child { max-width: 210px; }
-  .ext-share-preview canvas:last-child { max-width: 380px; margin: auto; }
+  .ext-share-dialog { --share-image-height: clamp(96px, calc(100dvh - 430px), 360px); padding: 18px; border-radius: 24px; }
+  .ext-share-dialog .ext-heading { margin-bottom: 12px; }
+  .ext-share-dialog .ext-heading h2 { font-size: 19px; }
+  .ext-share-switcher { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding: 4px; margin-bottom: 12px; border: 1px solid #b7ecdc1c; border-radius: 999px; background: #060d1766; }
+  .ext-share-dialog .ext-share-choice { border-color: transparent; background: transparent; color: #8faeaa; box-shadow: none; }
+  .ext-share-dialog .ext-share-choice[aria-pressed="true"] { color: #ddfaed; background: #addfca1f; border-color: #b7ecdc26; box-shadow: 0 2px 8px #0002; }
+  .ext-share-preview { grid-template-columns: minmax(0, 1fr); }
+  .ext-share-dialog[data-preview="qr"] .ext-share-poster, .ext-share-dialog[data-preview="poster"] .ext-share-qr { display: none; }
+  .ext-share-card { padding: 12px; }
+  .ext-share-dialog .ext-share-actions { gap: 10px; margin-top: 12px; padding-top: 12px; }
   .ext-actions .ext-button { flex-grow: 1; }
 }
-@media (prefers-reduced-motion: reduce) { .ext-dialog::backdrop { backdrop-filter: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .ext-dialog::backdrop { backdrop-filter: none; }
+  .ext-share-dialog .ext-button, .ext-share-dialog .ext-close { transition: none; }
+  .ext-share-dialog .ext-button:hover:not(:disabled), .ext-share-dialog .ext-button:active:not(:disabled), .ext-share-dialog .ext-close:active { transform: none; }
+}

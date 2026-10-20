@@ -15,33 +15,35 @@ npm start
 
 数据：`data/inner-light.sqlite`（WAL 模式）。`.env`、`data/`、`node_modules/`、生成的 `vendor/` 不提交 Git。
 
-## Docker / Redis / 双实例
+## Docker 单实例部署（供用户自行执行）
+
+以下教程仅作部署参考。用户当前明确禁止代理在其本机执行任何 Docker 相关操作，包括只读查询、配置校验、容器或守护进程交互；任务结束后也不得启动 Docker，除非用户明确更改这一约束。允许按需编辑 Dockerfile、Compose 和教程文本，不代表授权运行其中命令。
 
 ```bash
 docker compose up -d --build
-# 可选：启动共享本机 SQLite 卷的第二实例
-docker compose --profile replica up -d --build
-```
-
-- 主实例：<http://localhost:3001/>
-- 第二实例：<http://localhost:3002/>
-- 管理后台：相应实例的 `/admin`
-- Redis：Compose 内部网络，不公开端口
-- SQLite 卷：`planet-data`；Redis 卷：`redis-data`
-
-```bash
-docker compose --profile replica ps
+docker compose ps
 docker compose logs -f
-docker compose --profile replica down
+# 停止服务，保留数据卷
+docker compose down
 ```
 
-两个实例共享**同一台机器的** SQLite 卷，通过 Redis Pub/Sub 立即向其他实例的 SSE 客户端广播。不是多服务器数据库复制，不应把 WAL SQLite 放到网络文件系统。启动顺序由 Compose 保证先主实例完成迁移。Redis 故障时仍能提交 SQLite，客户端通过重连快照/15 秒轮询校准；Pub/Sub 不承诺历史消息重放。
+应用：<http://localhost:3001/>，管理后台：<http://localhost:3001/admin>。可通过 `.env` 的 `DOCKER_PORT` 修改端口；默认仅绑定本机。SQLite 数据继续使用原有的 `planet-data` 命名卷，升级时保持原 Compose 项目名，避免另建空卷。不要使用 `docker compose down -v`，该选项会删除数据卷。
+
+部署只运行一个 Node.js 实例。SSE 在该进程内向当前连接的客户端推送更新，断线后通过重连快照和轮询校准。之前的双实例方案没有负载均衡器，两个端口需要分别访问；现已移除第二实例和 Redis 服务、配置、依赖，统一使用单实例入口。此配置不支持多副本间广播，也不是多服务器数据库复制；SQLite WAL 文件应保存在本机磁盘。
+
+Compose 转发审核服务及超时、提交限流、`TRUST_PROXY` 和 `COOKIE_SECURE` 设置。通过 HTTPS 反向代理公开服务时，设置 `COOKIE_SECURE=1`；只有代理确实覆盖 `X-Forwarded-For` 时才开启 `TRUST_PROXY=1`。原双实例部署升级前先停止旧 `replica` 和 `redis` 容器，再使用新配置启动；可用 `docker compose up -d --build --remove-orphans` 清理旧项目容器。旧 `redis-data` 卷不会自动删除，也不再使用。
 
 ## 公开页面扩展
+
+发送时词球保持正常旋转，已有词语不会因发射、新增或移除词语、实时同步、轮询、发送失败或离线排队而重新排列或重置位置。新公开词语从正面的随机落点加入，随后随词球继续旋转，发射轨迹和落点反馈跟随该位置。
+
+再次发送已有词语时，原词保留原位，以短暂的私人正面文字和脉冲反馈帮助辨认；不会为此复制公开词条或改变真实计数规则。发送不会自动转动整个球来聚焦，也不会暂停等待；拖动和方向键始终可以接管视角。待审核、驳回、发送失败和离线排队只提供私人反馈，不提前加入公开词球或增加共鸣数。
 
 ### 二维码与 PNG 海报
 
 点击“二维码与海报”，本地生成当前 URL 的二维码和 **1080×1440** 星球快照海报，包含当前角度的词球、星球名、真实共鸣统计和二维码。可分别下载 PNG、复制链接或调用系统分享。没有第三方截图上传。
+
+分享弹窗中二维码保持正方形，海报完整等比预览；桌面双栏、手机切换，按钮按操作分组，并移除说明段落。此次只调整弹窗与预览显示，海报生成内容保持不变。
 
 二维码分享的是当前 URL。要让其他设备访问，应部署到可达的域名/局域网地址；`localhost` 二维码只适用于本机。
 
@@ -85,7 +87,7 @@ Authorization: Bearer MODERATION_API_KEY
 
 接受 `{results:[{flagged:boolean}]}`；标记为风险时转人工待审。也可接自有网关 `{decision:"approved"|"pending"|"rejected",reason:"..."}`。超时、5xx、格式错误**一律转待审**，不静默放行。房间预审开启时，即便语义服务通过也仍需人工审核。
 
-未配置外部 URL 时仅按房间人工预审设置工作，健康接口报告 `moderation:manual-only`。代码适配及协议故障路径已验证；真实供应商调用需要你自己的账户、endpoint 和 API key，未配置凭据不等于已启用第三方服务。
+未配置外部 URL 时仅按房间人工预审设置工作，健康接口报告 `moderation:manual-only`。真实供应商调用需要你自己的账户、endpoint 和 API key；未配置凭据不等于已启用第三方服务，具体协议及故障路径需在目标环境验证。
 
 ## 多角色后台
 
@@ -99,9 +101,21 @@ Authorization: Bearer MODERATION_API_KEY
 | moderator | 指定房间读取、通过/驳回、屏蔽/恢复；不能导入、改设置或管理账户 |
 | viewer | 指定房间只读 |
 
-房间范围为逗号分隔 slug 或 `*`。非默认房间只有 owner 可创建（后台输入新 slug 后加载），最多 100 个。
+房间范围为逗号分隔 slug 或 `*`。非默认房间仅由 owner 显式创建，最多 100 个；加载或切换一个不存在的 slug 不会创建房间。后台的创建入口与现有星球切换入口分开，创建接口见下方说明。
 
 ADMIN_TOKEN 仍是紧急引导凭据，设置高熵值或在创建 owner 后移除。默认本机绑定；公开部署必须 HTTPS、强密码、可信代理和备份。读角色可读取其房间的管理导出（含匿名关联标签），请只授权可信人员。
+
+## 后台管理能力
+
+后台已实现深绿侧栏与浅色卡片的分区管理台，以下入口接通管理接口；此前已通过 13 组管理接口检查，桌面和手机的完整浏览器视觉与交互验收仍待完成：
+
+- 总览：累计与今日共鸣、公开词语、待审数量、七天趋势、访客、热门词及最近提交；运行状态仅向 owner 展示。
+- 星球：显式创建和切换现有星球；创建时填写 slug、名称、描述、主题、预审开关和是否加入示例词（`seed`）。设置支持编辑描述。
+- 词库：创建词条并指定词频，编辑已有词频，勾选多项批量屏蔽或恢复。
+- 审核：勾选多条待审提交，批量通过或驳回，并显示操作结果。
+- 历史与审计：支持搜索、分页，保留操作者和审核结果，便于追踪变更。
+- 账户：由 owner 重置账户密码，并使旧会话失效。
+- 备份：提供 JSON/CSV 导出、导入与恢复入口；完整数据库灾备仍按下文说明操作。
 
 ## CSV / JSON 导入恢复
 
@@ -135,8 +149,20 @@ POST /api/admin/reviews/:id?planet=default {decision:"approved"|"rejected"}
 DELETE /api/admin/words/:word?planet=default
 POST /api/admin/words/:word/restore?planet=default
 POST /api/admin/clear?planet=default
-POST /api/admin/planet?planet=default {name,theme,reviewMode}
+POST /api/admin/planet?planet=default {name,description,theme,reviewMode}
 ```
+
+后台还提供以下接口；房间级词库操作通过 `?planet=<slug>` 指定目标星球，并沿用角色和房间范围校验：
+
+```text
+POST /api/admin/planets {slug,name,description,theme,reviewMode,seed}
+POST /api/admin/words?planet=default {word,frequency}
+POST /api/admin/words/batch?planet=default {words,action:"hide"|"restore"}
+POST /api/admin/reviews/batch?planet=default {ids,decision:"approved"|"rejected"}
+GET  /api/admin/system  # 仅 owner
+```
+
+创建星球需要 owner 权限。`GET /api/admin/planets` 只列出现有且有权访问的星球；显式创建使用 `POST`。后台同时支持描述设置、词频编辑、历史/审计搜索分页及密码重置。
 
 管理接口使用登录 Cookie，或引导令牌 `X-Admin-Token`。`analytics?days=7|30|90`，`recent?limit=1..50`。
 
@@ -149,6 +175,8 @@ npm run check
 npm audit --omit=dev
 git diff --check
 ```
+
+`npm run check` 是保留的语法与 manifest 检查工具，`npm run build` 用于资源构建；它们不替代业务或浏览器验收。此前使用的管理接口与词球临时检查脚本已在验证后按清理约定删除，不作为长期 npm 命令。当前禁止代理执行任何本机 Docker 检查或操作。
 
 启动时兼容旧 SQLite 表，保留原数据；旧 JSON `planet.json` / `planets/*.json` 首次迁移并保留源文件。部署升级前先备份 SQLite。旧 JSON 的历史缺失和累计基数无法凭空恢复。
 

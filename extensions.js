@@ -147,32 +147,57 @@
   function openShare() {
     if (!shareDialog) {
       shareDialog = dialog('shareToolsDialog', '分享星球');
-      shareDialog.append(node('p', '二维码与海报均在本机生成，不会上传截图。', 'ext-description'));
+      shareDialog.classList.add('ext-share-dialog');
+      shareDialog.dataset.preview = 'qr';
       const preview = node('div', undefined, 'ext-share-preview');
+      const switcher = node('div', undefined, 'ext-share-switcher');
+      switcher.setAttribute('role', 'group'); switcher.setAttribute('aria-label', '选择分享预览');
+      const qrCard = node('section', undefined, 'ext-share-card ext-share-qr'); qrCard.id = 'shareQRPanel';
+      const posterCard = node('section', undefined, 'ext-share-card ext-share-poster'); posterCard.id = 'sharePosterPanel';
+      const qrHeader = node('div', undefined, 'ext-share-card-heading'); qrHeader.append(node('h3', '二维码'));
+      const posterHeader = node('div', undefined, 'ext-share-card-heading'); posterHeader.append(node('h3', '星球海报'));
+      const qrFrame = node('div', undefined, 'ext-share-image'), posterFrame = node('div', undefined, 'ext-share-image');
       shareQR = node('canvas'); shareQR.setAttribute('role', 'img'); shareQR.setAttribute('aria-label', '当前星球链接二维码');
       poster = node('canvas'); poster.setAttribute('role', 'img'); poster.setAttribute('aria-label', '当前旋转词球、星球统计与二维码的海报');
-      preview.append(shareQR, poster);
+      qrFrame.append(shareQR); posterFrame.append(poster);
       const message = status(), fallback = node('input'); fallback.type = 'url'; fallback.readOnly = true; fallback.hidden = true; fallback.className = 'ext-url'; fallback.setAttribute('aria-label', '星球链接，可手动复制');
-      const actions = node('div', undefined, 'ext-actions');
-      const qrDownload = button('下载二维码 PNG', () => download(shareQR, 'inner-light-qr.png', message));
-      const posterDownload = button('下载海报 PNG', () => download(poster, 'inner-light-poster.png', message));
+      const downloadStatus = { set textContent(value) { message.textContent = value.startsWith('图片已生成') ? '图片已生成' : value; } };
+      const actions = node('div', undefined, 'ext-actions ext-share-actions');
+      const qrDownload = button('下载二维码', () => download(shareQR, 'inner-light-qr.png', downloadStatus), 'ext-button ext-share-download');
+      const posterDownload = button('保存海报', () => download(poster, 'inner-light-poster.png', downloadStatus), 'ext-button ext-share-download ext-share-primary');
       const generate = async () => {
         const current = state(), snapshot = captureSphere(current.sphereElement);
         shareDialog.dataset.url = current.url;
-        qrDownload.disabled = posterDownload.disabled = true; message.textContent = '正在本机生成二维码与星球海报…';
+        fallback.hidden = true;
+        qrDownload.disabled = posterDownload.disabled = refresh.disabled = true; preview.setAttribute('aria-busy', 'true'); message.textContent = '生成中…';
         try {
           if (document.fonts?.ready) await document.fonts.ready;
-          await qr(shareQR, current.url); drawPoster(poster, current, snapshot, shareQR);
-          message.textContent = '已生成当前旋转角度的海报。'; qrDownload.disabled = posterDownload.disabled = false;
-        } catch (error) { message.textContent = error.message || '图片生成失败。仍可复制链接。'; }
+          await qr(shareQR, current.url);
+          // qrcode writes fixed inline dimensions; let the square preview respond to the dialog.
+          shareQR.style.width = ''; shareQR.style.height = '';
+          drawPoster(poster, current, snapshot, shareQR);
+          message.textContent = ''; qrDownload.disabled = posterDownload.disabled = false;
+        } catch (error) { message.textContent = error.message || '生成失败，请重试'; }
+        finally { refresh.disabled = false; preview.removeAttribute('aria-busy'); }
       };
-      actions.append(qrDownload, posterDownload, button('更新星球快照', generate), button('复制链接', () => copyURL(shareDialog.dataset.url || state().url, message, fallback)), button('系统分享', async () => {
+      const refresh = button('↻', generate, 'ext-button ext-share-refresh'); refresh.setAttribute('aria-label', '更新星球快照'); refresh.title = '更新星球快照';
+      posterHeader.append(refresh);
+      qrCard.append(qrHeader, qrFrame, qrDownload); posterCard.append(posterHeader, posterFrame, posterDownload); preview.append(qrCard, posterCard);
+      const choices = [['qr', '二维码', qrCard], ['poster', '海报', posterCard]];
+      choices.forEach(([key, label, panel]) => {
+        const control = button(label, () => {
+          shareDialog.dataset.preview = key;
+          Array.from(switcher.children).forEach(item => item.setAttribute('aria-pressed', String(item === control)));
+        }, 'ext-button ext-share-choice');
+        control.setAttribute('aria-controls', panel.id); control.setAttribute('aria-pressed', String(key === 'qr')); switcher.append(control);
+      });
+      actions.append(button('复制链接', () => copyURL(shareDialog.dataset.url || state().url, message, fallback)), button('系统分享 ↗', async () => {
         const url = shareDialog.dataset.url || state().url;
         if (!navigator.share) { await copyURL(url, message, fallback); return; }
-        try { await navigator.share({ title: state().name, text: '来我的心光星球，遇见同频的念头。', url }); message.textContent = '分享已打开。'; }
+        try { await navigator.share({ title: state().name, text: '来我的心光星球，遇见同频的念头。', url }); message.textContent = '分享已打开'; }
         catch (error) { if (error.name !== 'AbortError') await copyURL(url, message, fallback); }
-      }));
-      shareDialog.append(preview, actions, fallback, message); shareDialog.generate = generate;
+      }, 'ext-button ext-share-native'));
+      shareDialog.append(switcher, preview, actions, fallback, message); shareDialog.generate = generate;
     }
     show(shareDialog); void shareDialog.generate();
   }

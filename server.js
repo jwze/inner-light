@@ -7,13 +7,12 @@ const Core = require('./core');
 const { openDatabase } = require('./database');
 const { openAuth } = require('./auth');
 const { moderateText } = require('./moderation');
-const { createBus } = require('./realtime');
 const { encodeCSV, decodeCSV } = require('./csv');
 if (fs.existsSync(path.join(__dirname, '.env'))) process.loadEnvFile(path.join(__dirname, '.env'));
 const PORT = Number(process.env.PORT || 3000), HOST = process.env.HOST || '0.0.0.0';
 const MINUTE_LIMIT = Number(process.env.MAX_SUBMISSIONS_PER_MINUTE || 20), HOUR_LIMIT = Number(process.env.MAX_SUBMISSIONS_PER_HOUR || 200);
 const BLOCKED = new Set((process.env.MODERATION_WORDS || '').split(',').map((word) => Core.normalizeWord(word).toLowerCase()).filter(Boolean));
-const PUBLIC_FILES = new Set(['index.html','style.css','app.js','core.js','effects.js','admin.html','admin.js','offline.js','extensions.js','extensions.css','sw.js','manifest.webmanifest','icon.svg','vendor/version.js','vendor/qrcode.js','vendor/icon-192.png','vendor/icon-512.png']);
+const PUBLIC_FILES = new Set(['index.html','style.css','app.js','core.js','effects.js','admin.html','admin.css','admin.js','offline.js','extensions.js','extensions.css','sw.js','manifest.webmanifest','icon.svg','vendor/version.js','vendor/qrcode.js','vendor/icon-192.png','vendor/icon-512.png']);
 const database = openDatabase(path.resolve(process.env.DATA_DIR || path.join(__dirname, 'data')));
 const auth = openAuth(database.filename, process.env.ADMIN_TOKEN || '');
 database.ensure('default');
@@ -33,8 +32,16 @@ async function body(req, limit = 4096) {
   try { const value = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}'); if (!value || typeof value !== 'object' || Array.isArray(value)) fail(400,'请求必须是 JSON 对象。'); return value; }
   catch (error) { fail(error.status || 400, error.status ? error.message : '请求格式不正确。'); }
 }
-const bus = createBus((slug,event) => { for (const client of clients) if (client.slug === slug && !client.res.destroyed) client.res.write(`id: ${event.version}\ndata: ${JSON.stringify(event)}\n\n`); });
-const broadcast = (slug,event) => bus.send(slug,event);
+function broadcast(slug, event) {
+  for (const client of clients) if (client.slug === slug && !client.res.destroyed) client.res.write(`id: ${event.version}\ndata: ${JSON.stringify(event)}\n\n`);
+}
+function planetSettings(value, defaults = {}) {
+  const next = { name: defaults.name, description: defaults.description ?? '', theme: defaults.theme ?? 'nebula', reviewMode: defaults.reviewMode ?? false, ...value };
+  if (typeof next.name !== 'string' || !next.name.trim() || Core.graphemes(next.name.trim()).length > 50 ||
+      typeof next.description !== 'string' || Core.graphemes(next.description).length > 200 ||
+      !['nebula','ocean','forest'].includes(next.theme) || typeof next.reviewMode !== 'boolean') fail(422,'名称、描述、主题或审核模式不合法。');
+  return { name: next.name.trim(), description: next.description, theme: next.theme, reviewMode: next.reviewMode };
+}
 function secureCookie(token, age) { return `il-admin=${token}; Max-Age=${age}; Path=/; HttpOnly; SameSite=Strict${process.env.COOKIE_SECURE === '1' ? '; Secure' : ''}`; }
 function sameOrigin(req) {
   if (!req.headers.origin) return;
@@ -42,7 +49,7 @@ function sameOrigin(req) {
   if (origin.host !== req.headers.host) fail(403,'不允许跨站提交。');
 }
 async function api(req,res,pathname,query) {
-  if (pathname === '/api/health') return json(res,200,{ok:true,storage:'sqlite',redis:bus.status(),moderation:process.env.MODERATION_URL ? 'configured' : 'manual-only'});
+  if (pathname === '/api/health') return json(res,200,{ok:true,storage:'sqlite',deployment:'single',moderation:process.env.MODERATION_URL ? 'configured' : 'manual-only'});
   if (pathname === '/api/auth/login' && req.method === 'POST') {
     const value = await body(req); const result = auth.login(value.name,value.password,req.socket.remoteAddress || 'unknown');
     res.setHeader('Set-Cookie', secureCookie(result.token,43200)); return json(res,200,{user:result.user});
@@ -57,14 +64,45 @@ async function api(req,res,pathname,query) {
     }
     const userMatch = /^\/api\/admin\/users\/(\d+)$/.exec(pathname);
     if (userMatch && req.method === 'POST') return json(res,200,{user:auth.update(user,Number(userMatch[1]),await body(req))});
-    if (pathname === '/api/admin/planets' && req.method === 'GET') return json(res,200,{items:database.listPlanets().filter((p)=>user.planets.includes('*')||user.planets.includes(p.slug))});
+    if (pathname === '/api/admin/system' && req.method === 'GET') {
+      auth.authorize(user,'default','settings');
+      return json(res,200,{uptime:process.uptime(),storage:'sqlite',deployment:'single',moderation:process.env.MODERATION_URL ? 'configured' : 'manual-only',rateLimits:{minute:MINUTE_LIMIT,hour:HOUR_LIMIT},blockedWordsCount:BLOCKED.size,sseClients:clients.size});
+    }
+    if (pathname === '/api/admin/planets') {
+      if (req.method === 'GET') return json(res,200,{items:database.listPlanets().filter((p)=>user.planets.includes('*')||user.planets.includes(p.slug))});
+      if (req.method === 'POST') {
+        const value = await body(req);
+        if (!validSlug(value.slug)) fail(422,'星球地址不合法。');
+        auth.authorize(user,value.slug,'settings');
+        const settings = planetSettings(value);
+        if (value.seed !== undefined && typeof value.seed !== 'boolean') fail(422,'seed 需为布尔值。');
+        return json(res,201,{ok:true,...database.createPlanet(value.slug,{...settings,seed:value.seed ?? true,actor:user.name})});
+      }
+    }
     const slug = query.get('planet') || 'default'; if (!validSlug(slug)) fail(400,'星球地址不合法。');
-    auth.authorize(user,slug,req.method === 'GET' ? 'read' : pathname.includes('/reviews/') || pathname.includes('/words/') ? 'review' : 'settings');
-    if (!database.exists(slug)) { auth.authorize(user,slug,'settings'); database.ensure(slug); }
+    const isReview = /^\/api\/admin\/reviews\/(?:batch|\d+)$/.test(pathname);
+    const isWordModeration = pathname.startsWith('/api/admin/words/');
+    auth.authorize(user,slug,req.method === 'GET' ? 'read' : isReview || isWordModeration ? 'review' : 'settings');
+    if (!database.exists(slug)) fail(404,'星球不存在，请显式创建。');
     const stateResult = (state) => { broadcast(slug,{type:'snapshot',...state}); return json(res,200,{ok:true,...state}); };
     if (req.method === 'GET' && ['/api/admin/export','/api/admin/words'].includes(pathname)) return json(res,200,database.export(slug));
     if (req.method === 'GET' && pathname === '/api/admin/export.csv') { res.writeHead(200,{'Content-Type':'text/csv; charset=utf-8','Content-Disposition':`attachment; filename="inner-light-${slug}.csv"`,'Cache-Control':'no-store'}); return res.end(encodeCSV(database.export(slug).words)); }
     if (req.method === 'GET' && pathname === '/api/admin/reviews') return json(res,200,{items:database.queue(slug)});
+    if (req.method === 'POST' && pathname === '/api/admin/words') {
+      auth.authorize(user,slug,'settings');
+      const value = await body(req);
+      return stateResult(database.upsertWord(slug,value.word,value.frequency,user.name));
+    }
+    if (req.method === 'POST' && pathname === '/api/admin/words/batch') {
+      const value = await body(req,32768);
+      return stateResult(database.moderateBatch(slug,value.words,value.action,user.name));
+    }
+    if (req.method === 'POST' && pathname === '/api/admin/reviews/batch') {
+      auth.authorize(user,slug,'review');
+      const value = await body(req);
+      const result = database.reviewBatch(slug,value.ids,value.decision,user.name);
+      return stateResult(result);
+    }
     const review = /^\/api\/admin\/reviews\/(\d+)$/.exec(pathname);
     if (review && req.method === 'POST') { const v = await body(req); return stateResult(database.review(slug,Number(review[1]),v.decision,user.name)); }
     if (req.method === 'POST' && pathname === '/api/admin/import') {
@@ -80,8 +118,8 @@ async function api(req,res,pathname,query) {
     if (pathname === '/api/admin/clear' && req.method === 'POST') return stateResult(database.moderate(slug,null,'clear',user.name));
     if (pathname === '/api/admin/planet' && req.method === 'POST') {
       const value = await body(req);
-      if (typeof value.name !== 'string' || !value.name.trim() || Core.graphemes(value.name.trim()).length>50 || !['nebula','ocean','forest'].includes(value.theme) || (value.reviewMode !== undefined && typeof value.reviewMode !== 'boolean')) fail(422,'名称、主题或审核模式不合法。');
-      return stateResult(database.updatePlanet(slug,{...value,name:value.name.trim(),actor:user.name}));
+      const settings = planetSettings(value,database.snapshot(slug).planet);
+      return stateResult(database.updatePlanet(slug,{...settings,actor:user.name}));
     }
     fail(404,'管理接口不存在。');
   }
@@ -129,5 +167,5 @@ const server=http.createServer(async(req,res)=>{
 });
 server.requestTimeout=15000;
 server.listen(PORT,HOST,()=>console.log(`Inner Light: http://localhost:${PORT} | SQLite: ${database.filename}`));
-function shutdown(){for(const c of clients)c.res.end();bus.close();server.close(()=>{auth.close();database.close();process.exit(0)});setTimeout(()=>process.exit(1),5000).unref();}
+function shutdown(){for(const c of clients)c.res.end();server.close(()=>{auth.close();database.close();process.exit(0)});setTimeout(()=>process.exit(1),5000).unref();}
 process.on('SIGTERM',shutdown);process.on('SIGINT',shutdown);
