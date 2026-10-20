@@ -1,56 +1,172 @@
 # 心光 · INNER LIGHT
 
-一个公开的互动文字星球：访客匿名提交念头，所有人的共鸣会聚合在同一颗公共星球中。
+一个公开的互动文字星球：访客匿名提交念头，所有人的共鸣会聚合在同一颗公共星球中。前端保留原有的 3D 词球和彗星动画，服务端使用 SQLite 持久化。
 
-## 本地运行
+## 运行要求
 
-需要 Node.js 18+：
+- Node.js 24+（使用内置 `node:sqlite`，不需要安装原生 npm 数据库依赖）
+- Docker Desktop（可选）
+
+## 本机单机运行
 
 ```bash
+cp .env.example .env
+# 编辑 .env，至少设置 ADMIN_TOKEN
 npm start
 ```
 
-打开 <http://localhost:3000>。
+打开：<http://localhost:3000>
 
-数据默认保存在 `data/planet.json`，该目录已加入 `.gitignore`，适合本地开发和小规模部署。可通过环境变量调整：
+管理后台：<http://localhost:3000/admin>
+
+SQLite 文件默认位置：
+
+```text
+data/inner-light.sqlite
+data/inner-light.sqlite-wal
+data/inner-light.sqlite-shm
+```
+
+这些运行时文件不会提交到 Git。
+
+## Docker 运行
 
 ```bash
-PORT=3000 DATA_DIR=./data ADMIN_TOKEN=change-me npm start
+cp .env.example .env
+docker compose up -d --build
 ```
+
+默认打开：<http://localhost:3001>
+
+查看状态和日志：
+
+```bash
+docker compose ps
+docker compose logs -f
+```
+
+停止服务：
+
+```bash
+docker compose down
+```
+
+Docker 使用 named volume `planet-data` 保存 SQLite 数据，容器重建或重启不会丢失数据。
+
+## 配置
+
+```dotenv
+PORT=3000
+HOST=127.0.0.1
+DATA_DIR=./data
+DOCKER_PORT=3001
+ADMIN_TOKEN=replace-with-a-long-random-token
+MAX_SUBMISSIONS_PER_MINUTE=20
+MAX_SUBMISSIONS_PER_HOUR=200
+MODERATION_WORDS=
+TRUST_PROXY=0
+```
+
+- `ADMIN_TOKEN` 为空时，管理接口关闭。
+- `MODERATION_WORDS` 是逗号分隔的精确禁词列表。
+- 只有在前置代理会覆盖 `X-Forwarded-For` 时才设置 `TRUST_PROXY=1`。
+- 生产环境建议通过 HTTPS、反向代理和安全的随机管理员令牌部署。
+
+## 公共 API
+
+```text
+GET  /api/health
+GET  /api/planets/:slug/words
+POST /api/planets/:slug/words       { "word": "旅行" }
+GET  /api/planets/:slug/recent?limit=20
+GET  /api/planets/:slug/stats
+GET  /api/planets/:slug/events      SSE
+```
+
+不同 slug 对应独立 SQLite 星球，例如：
+
+```text
+http://localhost:3000/?planet=default
+http://localhost:3000/?planet=summer-night
+```
+
+默认星球启动时创建；其他星球需管理员在后台输入 slug 并加载创建，匿名访问不会创建房间。最多 100 个星球。
+
+## 管理 API 和后台
+
+管理后台地址：`/admin`。请求必须携带：
+
+```text
+X-Admin-Token: <ADMIN_TOKEN>
+```
+
+接口：
+
+```text
+GET    /api/admin/export?planet=default
+GET    /api/admin/words?planet=default
+DELETE /api/admin/words/:word?planet=default
+POST   /api/admin/words/:word/restore?planet=default
+POST   /api/admin/clear?planet=default
+POST   /api/admin/planet?planet=default
+       { "name": "海洋星球", "theme": "ocean" }
+```
+
+管理后台支持：
+
+- 查看真实提交总数、今日提交数、活跃访客和独立访客
+- 搜索词语
+- 屏蔽/恢复词语
+- 屏蔽整颗星球
+- 修改星球名称和主题（星云、海洋、森林）
+- 查看管理操作记录
+- 导出完整 JSON，包括词语、提交历史和审核记录
 
 ## 已实现能力
 
-- 公共星球聚合数据，词语频率由服务端维护
-- 服务端词语校验、最大词数限制和原子化的单进程写入队列
-- 匿名 IP 哈希限流：每分钟和每小时两个窗口
-- SSE 实时同步：其他访客提交时，词球会播放抵达动画
-- 公共词球、最近抵达、总共鸣数和今日共鸣数
-- 网络失败时回退到示例星球，并提供明确状态提示
-- 分享按钮：支持 Web Share，不支持时复制当前链接
-- `?planet=default` 预留主题星球入口
-- 管理后台：`/admin`，使用 `X-Admin-Token` 访问导出和移除接口
-- HTML、CSS、JavaScript 零第三方运行时依赖
+- 公共聚合词球，频率由服务端 SQLite 事务维护
+- 105+ 并发提交下的原子频率递增
+- 完整提交历史和准确的今日统计，不再截断为最近 100 条
+- 匿名 HttpOnly Cookie 和 HMAC 标识
+- IP + 访客双维度分钟/小时限流
+- 服务端输入校验、请求体限制、同源写请求保护
+- SQLite WAL、事务、重启持久化和旧 JSON 数据一次性迁移
+- SSE 初始快照、心跳、自动重连后重新校准
+- 15 秒轮询兜底，避免 SSE 断线遗漏数据
+- 前端乐观动画、失败后权威数据校准、离线只读模式
+- 公共最近抵达列表、统计显示和主题应用
+- 分享按钮和 `?planet=` 分享链接
+- 管理员屏蔽、恢复、批量屏蔽、主题设置、审计记录和完整导出
+- Docker 健康检查和 named volume 持久化
 
-## API
+## 数据库表
+
+SQLite 中包含：
+
+- `planets`：星球元数据、版本号
+- `words`：公共词语、频率、隐藏状态、示例标识
+- `submissions`：完整提交事件历史
+- `visitors`：匿名访客首次/最近访问
+- `rate_events`：持久化限流窗口
+- `moderation_log`：屏蔽、恢复和批量操作记录
+- `settings`：身份密钥和迁移标记
+
+## 旧版本迁移
+
+如果 `DATA_DIR` 下存在旧版本的：
 
 ```text
-GET  /api/planets/default/words
-POST /api/planets/default/words       { "word": "旅行" }
-GET  /api/planets/default/recent
-GET  /api/planets/default/stats
-GET  /api/planets/default/events      SSE
-GET  /api/admin/export                X-Admin-Token
-DELETE /api/admin/words/:word         X-Admin-Token
+planet.json
+planets/*.json
 ```
 
-## 生产部署建议
+首次启动会将词语、提交记录、星球设置和版本信息迁移到 `inner-light.sqlite`。旧 JSON 文件不会自动删除，确认 SQLite 正常后可以手动归档。
 
-当前实现使用 JSON 文件，优点是零依赖、易启动，适合单实例小型活动。正式多人生产环境建议将 `server.js` 的数据层替换为 PostgreSQL：
+## 检查
 
-1. 用 `planet_words(planet_id, normalized_word, frequency)` 唯一索引保存聚合词语。
-2. 用 `submissions` 表保存每次提交事件。
-3. 使用 `INSERT ... ON CONFLICT DO UPDATE` 原子递增频率。
-4. 使用 Redis 维护跨实例限流和发布订阅。
-5. 使用反向代理配置 HTTPS、压缩、日志与备份。
+```bash
+npm run check
+git diff --check
+```
 
-当前管理员令牌必须通过环境变量设置；不要把它写进前端源码或提交到仓库。
+注意：Node 24 的 `node:sqlite` 当前会显示 ExperimentalWarning，这是运行时提示，不影响功能。

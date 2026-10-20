@@ -10,7 +10,7 @@
   const dialog = $("libraryDialog");
   const API_BASE = "/api";
   const PLANET_SLUG = new URLSearchParams(location.search).get("planet") || "default";
-  const STORAGE_KEY = "inner-light:preferences:v1";
+  const STORAGE_KEY = `inner-light:cache:${PLANET_SLUG}`;
   const motionQuery = matchMedia("(prefers-reduced-motion: reduce)");
   const palette = ["#8ef7ed", "#bce9ff", "#dfc6ff", "#fff1b7", "#a6ffe5", "#f2cadf"];
   const measure = document.createElement("canvas").getContext("2d");
@@ -65,7 +65,7 @@
   }
 
   async function apiRequest(path, options = {}) {
-    const response = await fetch(`${API_BASE}${path}`, { headers: { "Content-Type": "application/json", ...(options.headers || {}) }, ...options });
+    const response = await fetch(`${API_BASE}${path}`, { ...options, signal: AbortSignal.timeout(10000), headers: { "Content-Type": "application/json", ...(options.headers || {}) } });
     let body = {};
     try { body = await response.json(); } catch (_) { /* empty response */ }
     if (!response.ok) throw new Error(body.message || "网络请求失败，请稍后再试。");
@@ -77,6 +77,7 @@
     const label = $("saveStatus");
     label.textContent = message || (state === "online" ? "公共星球 · 实时同步" : state === "offline" ? "离线预览 · 未连接" : "连接公共星球中…");
     label.classList.toggle("offline", state === "offline");
+    updateSubmitAvailability();
   }
 
   function updateRecent(items = []) {
@@ -101,7 +102,8 @@
   function updatePublicStats(next = {}) {
     publicStats = { ...publicStats, ...next };
     $("wordCount").textContent = entries.size;
-    $("totalCount").textContent = publicStats.totalSubmissions || Array.from(entries.values()).reduce((sum, item) => sum + item.frequency, 0);
+    $("totalCount").textContent = publicStats.totalSubmissions ?? 0;
+    $("activeCount").textContent = publicStats.activeVisitors ?? 0;
     const today = $("todayCount");
     if (today) today.textContent = publicStats.todaySubmissions || 0;
     $("emptyState").hidden = entries.size > 0;
@@ -123,90 +125,91 @@
     wake();
   }
 
-  function applyPlanetSnapshot(payload) {
-    if (payload.unchanged) return;
-    serverVersion = payload.version || serverVersion;
+  function applyPlanetSnapshot(payload, animateWord = null, force = false) {
+    if (!force && payload.version < serverVersion) return;
+    serverVersion = payload.version ?? 0;
     persistedEntries = C.createEntries(payload.items || []);
-    replaceEntries(persistedEntries);
+    const names = new Set(persistedEntries.map((item) => item.word));
+    const removed = nodes.filter((node) => !names.has(node.word));
+    if (removed.length) {
+      cancelEffects();
+      for (const node of removed) { node.element.remove(); entries.delete(node.word); }
+      nodes = nodes.filter((node) => names.has(node.word));
+    }
+    for (const item of persistedEntries) applyServerItem(item, item.word === animateWord);
+    if (removed.length) redistribute();
     updatePublicStats(payload.stats || {});
     updateRecent(payload.recent || []);
+    if (payload.planet) {
+      document.documentElement.dataset.theme = payload.planet.theme || "nebula";
+      $("planetName").textContent = payload.planet.name;
+      document.title = `${payload.planet.name} · 心光`;
+    }
+    if (dialog.open) libraryList();
+    try { storage?.setItem(STORAGE_KEY, JSON.stringify(payload)); } catch (_) { /* optional cache */ }
+  }
+
+  let hasSnapshot = false;
+  let submitting = false;
+  let streamConnected = false;
+  function updateSubmitAvailability() {
+    $("sendBtn").disabled = submitting || connectionState !== "online";
   }
 
   async function loadPlanet() {
     try {
       const payload = await apiRequest(`/planets/${encodeURIComponent(PLANET_SLUG)}/words`);
-      applyPlanetSnapshot(payload);
-      setConnection("online");
+      applyPlanetSnapshot(payload, null, !hasSnapshot);
+      hasSnapshot = true;
+      setConnection("online", streamConnected ? undefined : "公共星球 · 定时同步");
       openRealtime();
+      return true;
     } catch (error) {
       setConnection("offline", "离线预览 · 提交不可用");
-      announce(`${error.message} 当前显示示例星球。`, true);
-      replaceEntries(previewEntries);
+      if (!hasSnapshot) {
+        let cached;
+        try { cached = JSON.parse(storage?.getItem(STORAGE_KEY) || "null"); } catch (_) { /* ignore invalid cache */ }
+        if (cached?.items && cached?.planet?.slug === PLANET_SLUG) applyPlanetSnapshot(cached, null, true);
+        else { replaceEntries(previewEntries); updatePublicStats({ totalSubmissions: 0, todaySubmissions: 0, activeVisitors: 0, uniqueVisitors: 0 }); updateRecent([]); }
+      }
+      announce(`${error.message} 当前仅可浏览，连接恢复后可继续发送。`, true);
+      return false;
     }
   }
 
   function openRealtime() {
     if (!window.EventSource || eventSource) return;
     eventSource = new EventSource(`${API_BASE}/planets/${encodeURIComponent(PLANET_SLUG)}/events`);
+    eventSource.onopen = () => { streamConnected = true; setConnection("online"); };
     eventSource.addEventListener("message", (event) => {
       try {
         const payload = JSON.parse(event.data);
-        if (payload.type === "word_added" && payload.item && (!payload.id || payload.id > serverVersion)) {
-          serverVersion = Math.max(serverVersion, payload.id || 0);
-          applyServerItem(payload.item, payload.id !== undefined);
-          publicStats.totalSubmissions++;
-          publicStats.todaySubmissions++;
-          updatePublicStats();
-          updateRecent([{ word: payload.item.word, createdAt: payload.createdAt }]);
-        } else if (payload.type === "word_removed") {
-          loadPlanet();
+        const isNew = payload.version > serverVersion;
+        if (payload.items) {
+          applyPlanetSnapshot(payload, isNew && payload.type === "word_added" && !submitting ? payload.item.word : null);
+          hasSnapshot = true;
+          setConnection("online");
         }
-      } catch (_) { /* ignore malformed realtime events */ }
+      } catch (_) { announce("实时数据异常，将通过定时刷新校准。", true); }
     });
-    eventSource.onerror = () => setConnection("offline", "实时连接中断 · 正在重连");
+    eventSource.onerror = () => { streamConnected = false; setConnection("offline", "实时连接中断 · 正在重连"); };
   }
 
-  async function submitToServer(word, isNew, previousFrequency) {
+  async function submitToServer(word, isNew) {
+    submitting = true;
+    updateSubmitAvailability();
     try {
       const payload = await apiRequest(`/planets/${encodeURIComponent(PLANET_SLUG)}/words`, { method: "POST", body: JSON.stringify({ word }) });
-      serverVersion = payload.version || serverVersion;
-      applyServerItem(payload.item);
-      updatePublicStats(payload.stats || {});
-      setConnection("online");
+      applyPlanetSnapshot(payload);
+      setConnection("online", streamConnected ? undefined : "公共星球 · 定时同步");
       announce(`「${word}」${isNew ? "已加入公共星球" : `· 第 ${payload.item.frequency} 次共鸣`}`);
     } catch (error) {
-      const node = entries.get(word);
-      if (node && isNew) {
-        node.element.remove();
-        entries.delete(word);
-        nodes = nodes.filter((item) => item !== node);
-        redistribute();
-      } else if (node) {
-        node.frequency = previousFrequency;
-        setLabelMetrics(node, nodes.indexOf(node));
-      }
-      updatePublicStats();
-      announce(error.message, true);
-      if (error.message.includes("网络") || error.message.includes("服务器")) setConnection("offline", "离线预览 · 提交失败");
-    }
-  }
-
-  function reconcile(items) {
-    const current = Array.from(entries.values(), ({ word, frequency }) => ({ word, frequency }));
-    if (JSON.stringify(current) !== JSON.stringify(items)) {
-      replaceEntries(items);
-      if (dialog.open) libraryList();
-    }
-  }
-
-  function persist(operation) {
-    if (operation?.type === "replace") {
-      const clean = C.createEntries(operation.items);
-      replaceEntries(clean);
-      try { if (storage) storage.setItem(STORAGE_KEY, JSON.stringify(clean)); } catch (_) { /* optional preference only */ }
-      return true;
-    }
-    return true;
+      replaceEntries(persistedEntries);
+      // Re-read authoritative state: an interrupted response may still have committed.
+      const calibrated = await loadPlanet();
+      if (!input.value) { input.value = word; updateInputCount(); }
+      announce(`${error.message} ${calibrated ? "已校准公共数据，请确认结果后重试。" : "仍离线；结果可能已提交，恢复连接后请先确认再重试。"}`, true);
+    } finally { submitting = false; updateSubmitAvailability(); }
   }
 
 
@@ -363,20 +366,21 @@
   }
 
   function sendWord(raw) {
+    if (submitting) { announce("正在发送，请稍候。"); return false; }
+    if (connectionState !== "online") { announce("当前离线，仅可浏览，连接恢复后可发送。", true); return false; }
     const result = C.validateWord(raw);
     if (!result.ok) { announce(result.error, true); return false; }
     const word = result.word;
     let node = entries.get(word);
     const isNew = !node;
     if (isNew && entries.size >= C.MAX_WORDS) {
-      announce(`星球已收藏 ${C.MAX_WORDS} 个念头。可以重复点亮，或在收藏中腾出位置。`, true);
+      announce(`星球已达到 ${C.MAX_WORDS} 个念头。可以点亮已有念头，新词需由管理员腾出位置。`, true);
       return false;
     }
     if (node && node.frequency >= C.MAX_FREQUENCY) {
       announce(`「${word}」已达到 ${C.MAX_FREQUENCY} 次共鸣。试着送入另一个念头吧。`, true);
       return false;
     }
-    const previousFrequency = node ? node.frequency : 0;
     if (isNew) {
       node = createNode({ word, frequency: 1 }, nodes.length);
       redistribute();
@@ -399,7 +403,7 @@
     startFlight(node, isNew);
     stats();
     announce(`「${word}」正在送入公共星球…`);
-    submitToServer(word, isNew, previousFrequency);
+    submitToServer(word, isNew);
     wake();
     return true;
   }
@@ -700,7 +704,7 @@
     if (event.key === "Enter" && (event.isComposing || composing || event.keyCode === 229)) event.preventDefault();
   });
   $("enrichBtn").addEventListener("click", () => {
-    loadPlanet().then(() => announce("公共星球已刷新。"));
+    loadPlanet().then((ok) => { if (ok) announce("公共星球已刷新。"); });
   });
   layer.addEventListener("click", (event) => {
     if (performance.now() < suppressClickUntil) return;
@@ -773,8 +777,8 @@
     if (pendingAction) { event.preventDefault(); closeConfirm(); $("librarySearch").focus(); }
   });
   $("librarySearch").addEventListener("input", libraryList);
-  $("clearBtn").addEventListener("click", () => askConfirm("clear", "隐藏当前公共词球内容并重新加载？公共数据不会被删除。"));
-  $("resetBtn").addEventListener("click", () => loadPlanet().then(() => announce("已重新加载公共星球。")));
+  $("clearBtn").addEventListener("click", () => dialog.close());
+  $("resetBtn").addEventListener("click", () => loadPlanet().then((ok) => { if (ok) announce("已重新加载公共星球。"); }));
   $("cancelAction").addEventListener("click", () => { closeConfirm(); $("librarySearch").focus(); });
   $("confirmAction").addEventListener("click", () => {
     if (!pendingAction) return;
@@ -818,5 +822,6 @@
   updateMotionHint();
   setConnection("connecting");
   loadPlanet();
+  setInterval(() => { if (!document.hidden && !submitting) loadPlanet(); }, 15000);
   wake();
 })();

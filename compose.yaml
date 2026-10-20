@@ -1,0 +1,15 @@
+services:
+  inner-light:
+    build: .
+    ports:
+      - "127.0.0.1:${DOCKER_PORT:-3001}:3000"
+    environment:
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-}
+      MODERATION_WORDS: ${MODERATION_WORDS:-}
+      MAX_SUBMISSIONS_PER_MINUTE: ${MAX_SUBMISSIONS_PER_MINUTE:-20}
+      MAX_SUBMISSIONS_PER_HOUR: ${MAX_SUBMISSIONS_PER_HOUR:-200}
+    volumes:
+      - planet-data:/app/data
+    restart: unless-stopped
+volumes:
+  planet-data:

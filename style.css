@@ -9,6 +9,8 @@
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
   font-synthesis: none;
 }
+:root[data-theme="ocean"] { --bg: #071c2c; --mint: #6ccaff; }
+:root[data-theme="forest"] { --bg: #10241b; --mint: #b8ec91; }
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 280px; background: var(--bg); color: var(--text); }
 body::before { content: ""; position: fixed; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 50% 43%, #3b326638, transparent 62%), radial-gradient(1px 1px at 13% 22%, #bfc8ed88, transparent), radial-gradient(1px 1px at 84% 35%, #bce5df99, transparent), radial-gradient(1px 1px at 26% 72%, #bce5df66, transparent), radial-gradient(1px 1px at 74% 84%, #bce5df66, transparent); }

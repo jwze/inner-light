@@ -9,59 +9,71 @@
     body { max-width: 980px; margin: 0 auto; padding: 32px 20px; }
     h1 { font-weight: 400; color: #8ef7ed; } h2 { font-weight: 400; }
     section { border: 1px solid #b4ecd922; border-radius: 14px; padding: 18px; margin: 18px 0; background: #ffffff05; }
-    input, button, select { font: inherit; padding: 9px 12px; border-radius: 7px; border: 1px solid #b4ecd933; background: #ffffff08; color: inherit; }
+    input, button, select { font: inherit; padding: 9px 12px; border-radius: 7px; border: 1px solid #b4ecd933; background: #17232c; color: inherit; }
     button { cursor: pointer; color: #8ef7ed; } button:disabled { opacity: .45; cursor: not-allowed; }
-    .toolbar { display: flex; flex-wrap: wrap; gap: 8px; } .toolbar input { min-width: 180px; }
+    .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; } input { min-width: 120px; max-width: 100%; box-sizing: border-box; }
     .summary { color: #9aafab; } #message { min-height: 24px; color: #8ef7ed; }
     .danger { color: #efb8a8; border-color: #efb8a844; }
-    table { border-collapse: collapse; width: 100%; } th, td { text-align: left; border-bottom: 1px solid #b4ecd914; padding: 9px 5px; }
+    table { border-collapse: collapse; width: 100%; } th, td { text-align: left; border-bottom: 1px solid #b4ecd914; padding: 9px 5px; overflow-wrap: anywhere; }
     td:last-child { text-align: right; } .word { color: #cde1d9; } .frequency { color: #96b0a7; }
     pre { white-space: pre-wrap; max-height: 360px; overflow: auto; color: #b9cacc; }
   </style>
 </head>
 <body>
-  <h1>心光 · 管理后台</h1>
+  <h1>心光 · SQLite 管理后台</h1>
   <section>
-    <div class="toolbar"><input id="token" type="password" placeholder="ADMIN_TOKEN" autocomplete="off" /><input id="planet" value="default" placeholder="星球 slug" /><button id="load">加载数据</button><button id="export">导出 JSON</button></div>
-    <p id="message" role="status"></p>
+    <div class="toolbar"><label>管理令牌 <input id="token" type="password" autocomplete="off" /></label><label>星球 <input id="planet" value="default" /></label><button id="load">加载数据</button><button id="export">导出完整 JSON</button></div>
+    <p id="message" role="status" aria-live="polite"></p>
   </section>
-  <section><h2>公共词球</h2><p id="summary" class="summary"></p><table><thead><tr><th>词语</th><th>共鸣数</th><th>操作</th></tr></thead><tbody id="words"><tr><td colspan="3">请输入管理员令牌后加载。</td></tr></tbody></table></section>
-  <section><h2>提交记录（最近 100 条）</h2><pre id="recent">—</pre></section>
+  <section><h2>星球设置</h2><div class="toolbar"><label>名称 <input id="name" maxlength="50" /></label><label>主题 <select id="theme"><option value="nebula">星云</option><option value="ocean">海洋</option><option value="forest">森林</option></select></label><button id="save">保存设置</button><a id="view" href="/" target="_blank" rel="noopener">打开公共页面 ↗</a></div></section>
+  <section><h2>公共词球</h2><p id="summary" class="summary"></p><div class="toolbar"><label>搜索 <input id="search" placeholder="寻找词语…" /></label><label><input id="hidden" type="checkbox" />只看已屏蔽</label><button id="clear" class="danger">屏蔽全部词语</button></div><table><thead><tr><th>词语</th><th>共鸣数</th><th>状态</th><th>操作</th></tr></thead><tbody id="words"><tr><td colspan="4">请输入管理员令牌后加载。</td></tr></tbody></table></section>
+  <section><h2>提交记录（预览最近 100 条，完整记录包含在导出中）</h2><pre id="recent">—</pre></section>
+  <section><h2>管理操作记录</h2><pre id="audit">—</pre></section>
   <script>
     const $ = (id) => document.getElementById(id);
     let current = null;
+    const planet = () => encodeURIComponent($('planet').value || 'default');
     async function request(path, options = {}) {
-      const response = await fetch(path, { ...options, headers: { 'X-Admin-Token': $('token').value, ...(options.headers || {}) } });
-      const body = await response.json();
-      if (!response.ok) throw new Error(body.message || '请求失败');
-      return body;
+      const response = await fetch(`${path}${path.includes('?') ? '&' : '?'}planet=${planet()}`, { ...options, signal: AbortSignal.timeout(10000), headers: { 'Content-Type': 'application/json', 'X-Admin-Token': $('token').value, ...(options.headers || {}) } });
+      const value = await response.json();
+      if (!response.ok) throw new Error(value.message || '请求失败');
+      return value;
     }
-    function render() {
-      $('summary').textContent = `${current.planet.name} · ${current.words.length} 个词语 · 共 ${current.totalSubmissions} 次提交`;
-      $('recent').textContent = JSON.stringify(current.submissions || [], null, 2);
-      const rows = current.words.slice().sort((a, b) => b.frequency - a.frequency).map((item) => {
+    function renderWords() {
+      if (!current) return;
+      const query = $('search').value.toLowerCase();
+      const rows = current.words.filter((item) => item.word.toLowerCase().includes(query) && (!$('hidden').checked || item.hidden)).map((item) => {
         const row = document.createElement('tr');
-        row.innerHTML = `<td class="word"></td><td class="frequency">${item.frequency}</td><td><button class="danger">屏蔽</button></td>`;
-        row.firstElementChild.textContent = item.word;
-        row.lastElementChild.addEventListener('click', () => removeWord(item.word));
-        return row;
+        for (const text of [item.word, String(item.frequency), item.hidden ? '已屏蔽' : item.isSeed ? '示例' : '公开']) { const cell = document.createElement('td'); cell.textContent = text; row.append(cell); }
+        const cell = document.createElement('td'); const button = document.createElement('button'); button.textContent = item.hidden ? '恢复' : '屏蔽';
+        button.addEventListener('click', async () => {
+          button.disabled = true;
+          try { await request(`/api/admin/words/${encodeURIComponent(item.word)}${item.hidden ? '/restore' : ''}`, { method: item.hidden ? 'POST' : 'DELETE' }); await load(); $('message').textContent = `已${item.hidden ? '恢复' : '屏蔽'}「${item.word}」。`; }
+          catch (error) { $('message').textContent = error.message; button.disabled = false; }
+        });
+        cell.append(button); row.append(cell); return row;
       });
       $('words').replaceChildren(...rows);
     }
     async function load() {
-      try { current = await request(`/api/admin/export?planet=${encodeURIComponent($('planet').value || 'default')}`); render(); $('message').textContent = `已加载 ${current.words.length} 个词语。`; }
-      catch (error) { $('message').textContent = error.message; }
-    }
-    async function removeWord(word) {
-      if (!confirm(`确认屏蔽「${word}」？`)) return;
-      try { await request(`/api/admin/words/${encodeURIComponent(word)}?planet=${encodeURIComponent($('planet').value || 'default')}`, { method: 'DELETE' }); await load(); $('message').textContent = `已屏蔽「${word}」。`; }
-      catch (error) { $('message').textContent = error.message; }
+      try {
+        const value = await request('/api/admin/export'); current = value;
+        $('summary').textContent = `${value.planet.name} · ${value.stats.wordCount} 个公开词语 · ${value.stats.totalSubmissions} 次真实提交 · 今日 ${value.stats.todaySubmissions} 次（UTC） · ${value.stats.activeVisitors} 位活跃 / ${value.stats.uniqueVisitors} 位独立访客`;
+        $('name').value = value.planet.name; $('theme').value = value.planet.theme;
+        $('view').href = `/?planet=${encodeURIComponent(value.planet.slug)}`;
+        $('recent').textContent = JSON.stringify(value.submissions.slice(0, 100), null, 2);
+        $('audit').textContent = JSON.stringify(value.moderation.slice(0, 100), null, 2);
+        renderWords(); $('message').textContent = '数据已从 SQLite 加载。'; return value;
+      } catch (error) { current = null; $('words').replaceChildren(); $('message').textContent = error.message; return null; }
     }
     $('load').addEventListener('click', load);
+    $('search').addEventListener('input', renderWords); $('hidden').addEventListener('change', renderWords);
+    $('save').addEventListener('click', async () => { try { await request('/api/admin/planet', { method: 'POST', body: JSON.stringify({ name: $('name').value, theme: $('theme').value }) }); await load(); } catch (error) { $('message').textContent = error.message; } });
+    $('clear').addEventListener('click', async () => { if (!confirm('将当前星球所有词语屏蔽？可在已屏蔽列表逐一恢复。')) return; try { await request('/api/admin/clear', { method: 'POST' }); await load(); } catch (error) { $('message').textContent = error.message; } });
     $('export').addEventListener('click', async () => {
-      if (!current) await load(); if (!current) return;
-      const blob = new Blob([JSON.stringify(current, null, 2)], { type: 'application/json' });
-      const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `inner-light-${current.planet.slug}.json`; link.click(); URL.revokeObjectURL(link.href);
+      const value = await load(); if (!value) return;
+      const link = document.createElement('a'); const href = URL.createObjectURL(new Blob([JSON.stringify(value, null, 2)], { type: 'application/json' }));
+      link.href = href; link.download = `inner-light-${value.planet.slug}.json`; link.click(); setTimeout(() => URL.revokeObjectURL(href), 1000);
     });
   </script>
 </body>
