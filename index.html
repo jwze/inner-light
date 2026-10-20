@@ -16,7 +16,7 @@
     <div class="app-shell">
       <header class="site-header">
         <a class="brand" href="index.html" aria-label="心光首页"><span class="brand-mark" aria-hidden="true">✳</span><span>心光 <span class="brand-en">INNER LIGHT</span></span></a>
-        <div class="header-actions"><span id="saveStatus" class="save-status">只属于你的宇宙</span><button id="libraryBtn" class="quiet-button" type="button" aria-haspopup="dialog">词语收藏 <span aria-hidden="true">↗</span></button></div>
+        <div class="header-actions"><span id="saveStatus" class="save-status">连接公共星球中…</span><button id="shareBtn" class="quiet-button" type="button">分享星球 <span aria-hidden="true">↗</span></button><button id="libraryBtn" class="quiet-button" type="button" aria-haspopup="dialog">词语收藏 <span aria-hidden="true">↗</span></button></div>
       </header>
 
       <main>
@@ -36,8 +36,9 @@
             <div id="emptyState" class="empty-state" hidden><span aria-hidden="true">✧</span><p>宇宙安静，等待第一束光。</p></div>
           </div>
           <div class="sphere-caption"><span class="caption-rule" aria-hidden="true"></span><span id="interactionHint">滑动星球 · 遇见同频的念头</span><span class="caption-rule" aria-hidden="true"></span></div>
+          <div class="recent-strip" aria-live="polite"><span class="recent-label">刚刚抵达</span><div id="recentList" class="recent-list"><span class="recent-empty">等待新的光</span></div></div>
           <div class="sphere-toolbar">
-            <p class="collection-stats"><strong id="wordCount">0</strong> 个念头<span class="stat-divider">/</span><strong id="totalCount">0</strong> 次共鸣</p>
+            <p class="collection-stats"><strong id="wordCount">0</strong> 个念头<span class="stat-divider">/</span><strong id="totalCount">0</strong> 次共鸣<span class="stat-divider">/</span><strong id="todayCount">0</strong> 今日</p>
             <button id="enrichBtn" class="enrich-button" type="button" title="补充示例兴趣标签，保留你原有的词语和次数">丰富星球 ＋</button>
           </div>
         </section>
@@ -58,7 +59,7 @@
 
     <dialog id="libraryDialog" class="library-dialog" aria-labelledby="libraryTitle">
       <div class="dialog-heading"><div><p class="eyebrow">YOUR CONSTELLATION</p><h2 id="libraryTitle">收藏的念头</h2></div><button id="closeLibrary" class="icon-button" type="button" aria-label="关闭词语收藏">×</button></div>
-      <p class="dialog-description">每次共鸣，都会让它更闪亮。数据只保存在当前浏览器。</p>
+      <p class="dialog-description">每次共鸣，都会让它更闪亮。公共星球中的内容会与所有访客同步。</p>
       <label class="sr-only" for="librarySearch">搜索收藏的词语</label><input id="librarySearch" class="library-search" type="search" placeholder="寻找一个念头…" />
       <div id="libraryList" class="library-list"></div>
       <p id="librarySummary" class="library-summary" role="status" aria-live="polite"></p>
@@ -66,6 +67,7 @@
       <div class="dialog-footer"><button id="resetBtn" class="quiet-button" type="button">恢复初始星球</button><button id="clearBtn" class="danger-button" type="button">清空词球</button></div>
       <div id="confirmPanel" class="confirm-panel" hidden><p id="confirmText"></p><div><button id="cancelAction" class="quiet-button" type="button">取消</button><button id="confirmAction" aria-describedby="confirmText" class="danger-button" type="button">确认</button></div></div>
     </dialog>
+    <div id="shareToast" class="share-toast" role="status" aria-live="polite" hidden>星球链接已复制</div>
     <noscript><div class="noscript-notice">请启用 JavaScript，让文字星球开始旋转。</div></noscript>
   </body>
 </html>

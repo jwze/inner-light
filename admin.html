@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>心光 · 管理后台</title>
+  <style>
+    :root { color-scheme: dark; font-family: system-ui, sans-serif; background: #111225; color: #e5edee; }
+    body { max-width: 980px; margin: 0 auto; padding: 32px 20px; }
+    h1 { font-weight: 400; color: #8ef7ed; } h2 { font-weight: 400; }
+    section { border: 1px solid #b4ecd922; border-radius: 14px; padding: 18px; margin: 18px 0; background: #ffffff05; }
+    input, button, select { font: inherit; padding: 9px 12px; border-radius: 7px; border: 1px solid #b4ecd933; background: #ffffff08; color: inherit; }
+    button { cursor: pointer; color: #8ef7ed; } button:disabled { opacity: .45; cursor: not-allowed; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 8px; } .toolbar input { min-width: 180px; }
+    .summary { color: #9aafab; } #message { min-height: 24px; color: #8ef7ed; }
+    .danger { color: #efb8a8; border-color: #efb8a844; }
+    table { border-collapse: collapse; width: 100%; } th, td { text-align: left; border-bottom: 1px solid #b4ecd914; padding: 9px 5px; }
+    td:last-child { text-align: right; } .word { color: #cde1d9; } .frequency { color: #96b0a7; }
+    pre { white-space: pre-wrap; max-height: 360px; overflow: auto; color: #b9cacc; }
+  </style>
+</head>
+<body>
+  <h1>心光 · 管理后台</h1>
+  <section>
+    <div class="toolbar"><input id="token" type="password" placeholder="ADMIN_TOKEN" autocomplete="off" /><input id="planet" value="default" placeholder="星球 slug" /><button id="load">加载数据</button><button id="export">导出 JSON</button></div>
+    <p id="message" role="status"></p>
+  </section>
+  <section><h2>公共词球</h2><p id="summary" class="summary"></p><table><thead><tr><th>词语</th><th>共鸣数</th><th>操作</th></tr></thead><tbody id="words"><tr><td colspan="3">请输入管理员令牌后加载。</td></tr></tbody></table></section>
+  <section><h2>提交记录（最近 100 条）</h2><pre id="recent">—</pre></section>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    let current = null;
+    async function request(path, options = {}) {
+      const response = await fetch(path, { ...options, headers: { 'X-Admin-Token': $('token').value, ...(options.headers || {}) } });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.message || '请求失败');
+      return body;
+    }
+    function render() {
+      $('summary').textContent = `${current.planet.name} · ${current.words.length} 个词语 · 共 ${current.totalSubmissions} 次提交`;
+      $('recent').textContent = JSON.stringify(current.submissions || [], null, 2);
+      const rows = current.words.slice().sort((a, b) => b.frequency - a.frequency).map((item) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `<td class="word"></td><td class="frequency">${item.frequency}</td><td><button class="danger">屏蔽</button></td>`;
+        row.firstElementChild.textContent = item.word;
+        row.lastElementChild.addEventListener('click', () => removeWord(item.word));
+        return row;
+      });
+      $('words').replaceChildren(...rows);
+    }
+    async function load() {
+      try { current = await request(`/api/admin/export?planet=${encodeURIComponent($('planet').value || 'default')}`); render(); $('message').textContent = `已加载 ${current.words.length} 个词语。`; }
+      catch (error) { $('message').textContent = error.message; }
+    }
+    async function removeWord(word) {
+      if (!confirm(`确认屏蔽「${word}」？`)) return;
+      try { await request(`/api/admin/words/${encodeURIComponent(word)}?planet=${encodeURIComponent($('planet').value || 'default')}`, { method: 'DELETE' }); await load(); $('message').textContent = `已屏蔽「${word}」。`; }
+      catch (error) { $('message').textContent = error.message; }
+    }
+    $('load').addEventListener('click', load);
+    $('export').addEventListener('click', async () => {
+      if (!current) await load(); if (!current) return;
+      const blob = new Blob([JSON.stringify(current, null, 2)], { type: 'application/json' });
+      const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `inner-light-${current.planet.slug}.json`; link.click(); URL.revokeObjectURL(link.href);
+    });
+  </script>
+</body>
+</html>

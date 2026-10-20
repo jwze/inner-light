@@ -8,19 +8,20 @@
   const layer = $("wordLayer");
   const input = $("wordInput");
   const dialog = $("libraryDialog");
-  const STORAGE_KEY = "inner-light:v1";
+  const API_BASE = "/api";
+  const PLANET_SLUG = new URLSearchParams(location.search).get("planet") || "default";
+  const STORAGE_KEY = "inner-light:preferences:v1";
   const motionQuery = matchMedia("(prefers-reduced-motion: reduce)");
   const palette = ["#8ef7ed", "#bce9ff", "#dfc6ff", "#fff1b7", "#a6ffe5", "#f2cadf"];
   const measure = document.createElement("canvas").getContext("2d");
   let storage;
   try { storage = window.localStorage; } catch { storage = null; }
-  const saved = C.readStored(storage, STORAGE_KEY);
-  // Keep this page's preview stable across saves; only a fresh visit draws new defaults.
   const previewEntries = C.randomSamples();
-  const initialEntries = saved.entries === null ? previewEntries : saved.entries;
-  let persistedEntries = initialEntries;
-  let pendingWrites = 0;
-  let writeQueue = Promise.resolve();
+  let persistedEntries = previewEntries;
+  let serverVersion = 0;
+  let publicStats = { totalSubmissions: 0, todaySubmissions: 0, activeVisitors: 0 };
+  let eventSource = null;
+  let connectionState = "connecting";
   let entries = new Map();
   let nodes = [];
   let flights = [];
@@ -63,7 +64,132 @@
     input.setAttribute("aria-invalid", String(error));
   }
 
-  const unsavedOperations = [];
+  async function apiRequest(path, options = {}) {
+    const response = await fetch(`${API_BASE}${path}`, { headers: { "Content-Type": "application/json", ...(options.headers || {}) }, ...options });
+    let body = {};
+    try { body = await response.json(); } catch (_) { /* empty response */ }
+    if (!response.ok) throw new Error(body.message || "网络请求失败，请稍后再试。");
+    return body;
+  }
+
+  function setConnection(state, message) {
+    connectionState = state;
+    const label = $("saveStatus");
+    label.textContent = message || (state === "online" ? "公共星球 · 实时同步" : state === "offline" ? "离线预览 · 未连接" : "连接公共星球中…");
+    label.classList.toggle("offline", state === "offline");
+  }
+
+  function updateRecent(items = []) {
+    const list = $("recentList");
+    if (!list) return;
+    list.replaceChildren();
+    if (!items.length) {
+      const empty = document.createElement("span");
+      empty.className = "recent-empty";
+      empty.textContent = "等待新的光";
+      list.append(empty);
+      return;
+    }
+    items.slice(0, 5).forEach((item) => {
+      const tag = document.createElement("span");
+      tag.className = "recent-word";
+      tag.textContent = item.word;
+      list.append(tag);
+    });
+  }
+
+  function updatePublicStats(next = {}) {
+    publicStats = { ...publicStats, ...next };
+    $("wordCount").textContent = entries.size;
+    $("totalCount").textContent = publicStats.totalSubmissions || Array.from(entries.values()).reduce((sum, item) => sum + item.frequency, 0);
+    const today = $("todayCount");
+    if (today) today.textContent = publicStats.todaySubmissions || 0;
+    $("emptyState").hidden = entries.size > 0;
+  }
+
+  function applyServerItem(item, animate = false) {
+    let node = entries.get(item.word);
+    if (!node) {
+      if (entries.size >= C.MAX_WORDS) return;
+      node = createNode(item, nodes.length);
+      redistribute();
+      if (animate) startFlight(node, true);
+    } else {
+      node.frequency = item.frequency;
+      setLabelMetrics(node, nodes.indexOf(node));
+      if (animate) startFlight(node, false);
+    }
+    updatePublicStats();
+    wake();
+  }
+
+  function applyPlanetSnapshot(payload) {
+    if (payload.unchanged) return;
+    serverVersion = payload.version || serverVersion;
+    persistedEntries = C.createEntries(payload.items || []);
+    replaceEntries(persistedEntries);
+    updatePublicStats(payload.stats || {});
+    updateRecent(payload.recent || []);
+  }
+
+  async function loadPlanet() {
+    try {
+      const payload = await apiRequest(`/planets/${encodeURIComponent(PLANET_SLUG)}/words`);
+      applyPlanetSnapshot(payload);
+      setConnection("online");
+      openRealtime();
+    } catch (error) {
+      setConnection("offline", "离线预览 · 提交不可用");
+      announce(`${error.message} 当前显示示例星球。`, true);
+      replaceEntries(previewEntries);
+    }
+  }
+
+  function openRealtime() {
+    if (!window.EventSource || eventSource) return;
+    eventSource = new EventSource(`${API_BASE}/planets/${encodeURIComponent(PLANET_SLUG)}/events`);
+    eventSource.addEventListener("message", (event) => {
+      try {
+        const payload = JSON.parse(event.data);
+        if (payload.type === "word_added" && payload.item && (!payload.id || payload.id > serverVersion)) {
+          serverVersion = Math.max(serverVersion, payload.id || 0);
+          applyServerItem(payload.item, payload.id !== undefined);
+          publicStats.totalSubmissions++;
+          publicStats.todaySubmissions++;
+          updatePublicStats();
+          updateRecent([{ word: payload.item.word, createdAt: payload.createdAt }]);
+        } else if (payload.type === "word_removed") {
+          loadPlanet();
+        }
+      } catch (_) { /* ignore malformed realtime events */ }
+    });
+    eventSource.onerror = () => setConnection("offline", "实时连接中断 · 正在重连");
+  }
+
+  async function submitToServer(word, isNew, previousFrequency) {
+    try {
+      const payload = await apiRequest(`/planets/${encodeURIComponent(PLANET_SLUG)}/words`, { method: "POST", body: JSON.stringify({ word }) });
+      serverVersion = payload.version || serverVersion;
+      applyServerItem(payload.item);
+      updatePublicStats(payload.stats || {});
+      setConnection("online");
+      announce(`「${word}」${isNew ? "已加入公共星球" : `· 第 ${payload.item.frequency} 次共鸣`}`);
+    } catch (error) {
+      const node = entries.get(word);
+      if (node && isNew) {
+        node.element.remove();
+        entries.delete(word);
+        nodes = nodes.filter((item) => item !== node);
+        redistribute();
+      } else if (node) {
+        node.frequency = previousFrequency;
+        setLabelMetrics(node, nodes.indexOf(node));
+      }
+      updatePublicStats();
+      announce(error.message, true);
+      if (error.message.includes("网络") || error.message.includes("服务器")) setConnection("offline", "离线预览 · 提交失败");
+    }
+  }
 
   function reconcile(items) {
     const current = Array.from(entries.values(), ({ word, frequency }) => ({ word, frequency }));
@@ -73,73 +199,19 @@
     }
   }
 
-  function applyOperations(base, operations) {
-    let collection = new Map(C.createEntries(base).map((item) => [item.word, { ...item }]));
-    let conflict = false;
-    for (const operation of operations) {
-      if (operation.type === "seed") {
-        for (const item of operation.items) {
-          if (!collection.has(item.word) && collection.size < C.MAX_WORDS) collection.set(item.word, { ...item });
-        }
-      } else if (operation.type === "replace") {
-        collection = new Map(operation.items.map((item) => [item.word, { ...item }]));
-      } else if (operation.type === "delete") collection.delete(operation.word);
-      else if (operation.type === "add") {
-        const item = collection.get(operation.word);
-        if (item) item.frequency = Math.min(C.MAX_FREQUENCY, item.frequency + 1);
-        else if (collection.size < C.MAX_WORDS) collection.set(operation.word, { word: operation.word, frequency: 1 });
-        else conflict = true;
-      }
-    }
-    return { items: Array.from(collection.values()), conflict };
-  }
-
   function persist(operation) {
-    if (operation) unsavedOperations.push(operation);
-    const commit = () => {
-      const batch = unsavedOperations.slice();
-      const latest = C.readStored(storage, STORAGE_KEY);
-      const base = latest.error ? persistedEntries : latest.entries === null ? previewEntries : latest.entries;
-      const merged = applyOperations(base, batch);
-      const ok = C.writeStored(storage, STORAGE_KEY, merged.items);
-      if (ok) {
-        unsavedOperations.splice(0, batch.length);
-        persistedEntries = merged.items;
-      }
-      return { ...merged, ok };
-    };
-    const status = (result) => {
-      $("saveStatus").textContent = result.ok ? "已保存在这台设备" : "临时模式 · 刷新后不会保存";
-      $("saveStatus").title = result.ok ? "仅保存在当前浏览器，不会上传任何文字" : "浏览器存储不可用；仍可使用词球";
-      if (result.ok && !pendingWrites) reconcile(result.items);
-      if (result.conflict && result.ok) announce("另一个窗口已填满星球，本次新词未能保存。请移除一些词后重试。", true);
-    };
-    // Web Locks serializes same-origin read/modify/write across tabs. Without it,
-    // read-before-write still rebases queued storage events, but is best effort.
-    const locks = window.navigator?.locks;
-    if (!locks?.request) {
-      const result = commit();
-      status(result);
-      return result.ok;
+    if (operation?.type === "replace") {
+      const clean = C.createEntries(operation.items);
+      replaceEntries(clean);
+      try { if (storage) storage.setItem(STORAGE_KEY, JSON.stringify(clean)); } catch (_) { /* optional preference only */ }
+      return true;
     }
-    pendingWrites++;
-    $("saveStatus").textContent = "正在保存…";
-    writeQueue = writeQueue.then(() => locks.request(STORAGE_KEY, commit)).then((result) => {
-      pendingWrites--;
-      status(result);
-      if (!result.ok) announce("本地保存失败，本次念头仍保留在页面中。请勿刷新。", true);
-    }).catch(() => {
-      pendingWrites--;
-      $("saveStatus").textContent = "临时模式 · 刷新后不会保存";
-      announce("本地保存暂不可用，本次念头仍保留在页面中。请勿刷新。", true);
-    });
     return true;
   }
 
+
   function stats() {
-    $("wordCount").textContent = entries.size;
-    $("totalCount").textContent = Array.from(entries.values()).reduce((sum, item) => sum + item.frequency, 0);
-    $("emptyState").hidden = entries.size > 0;
+    updatePublicStats();
   }
 
   function setLabelMetrics(node, index) {
@@ -304,12 +376,10 @@
       announce(`「${word}」已达到 ${C.MAX_FREQUENCY} 次共鸣。试着送入另一个念头吧。`, true);
       return false;
     }
+    const previousFrequency = node ? node.frequency : 0;
     if (isNew) {
       node = createNode({ word, frequency: 1 }, nodes.length);
-      // Start at the new target; existing points ease towards their new homes.
       redistribute();
-      // Reserve a viewer-facing slot for the arriving word, instead of hiding its
-      // impact on the far hemisphere. Other labels still ease into their new slots.
       const facing = nodes.reduce((best, item) => {
         const point = item.target;
         const depth = renderMatrix[6] * point.x + renderMatrix[7] * point.y + renderMatrix[8] * point.z;
@@ -328,8 +398,8 @@
     }
     startFlight(node, isNew);
     stats();
-    const persisted = persist({ type: "add", word });
-    announce(`${isNew ? `「${word}」已加入你的星球` : `「${word}」· 第 ${node.frequency} 次共鸣`}${persisted ? "" : "（未保存）"}`);
+    announce(`「${word}」正在送入公共星球…`);
+    submitToServer(word, isNew, previousFrequency);
     wake();
     return true;
   }
@@ -572,8 +642,10 @@
       const remove = document.createElement("button");
       remove.type = "button";
       remove.className = "delete-word";
-      remove.textContent = "移除";
-      remove.setAttribute("aria-label", `移除 ${node.word}`);
+      remove.textContent = "仅管理员可移除";
+      remove.disabled = true;
+      remove.title = "公共词语由管理员审核和移除";
+      remove.setAttribute("aria-label", `${node.word} 仅管理员可移除`);
       remove.addEventListener("click", () => {
         selectedWord = node.word;
         askConfirm("delete", `将「${node.word}」移出星球？它的共鸣次数也会被移除。`);
@@ -628,13 +700,7 @@
     if (event.key === "Enter" && (event.isComposing || composing || event.keyCode === 229)) event.preventDefault();
   });
   $("enrichBtn").addEventListener("click", () => {
-    const additions = C.samples().filter((item) => !entries.has(item.word)).slice(0, C.MAX_WORDS - entries.size);
-    if (!additions.length) { announce("当前示例标签已齐全，或星球已满。可以继续发送自己的念头。"); return; }
-    additions.forEach((item) => createNode(item, nodes.length));
-    redistribute();
-    stats();
-    persist({ type: "seed", items: additions });
-    announce(`已补充 ${additions.length} 个兴趣标签，你原有的文字和共鸣次数都保留了。`);
+    loadPlanet().then(() => announce("公共星球已刷新。"));
   });
   layer.addEventListener("click", (event) => {
     if (performance.now() < suppressClickUntil) return;
@@ -707,22 +773,13 @@
     if (pendingAction) { event.preventDefault(); closeConfirm(); $("librarySearch").focus(); }
   });
   $("librarySearch").addEventListener("input", libraryList);
-  $("clearBtn").addEventListener("click", () => askConfirm("clear", "清空整颗星球？所有念头和共鸣次数都会被移除。此操作不能撤销。"));
-  $("resetBtn").addEventListener("click", () => askConfirm("reset", "恢复初始星球？当前收藏会被示例念头替换。此操作不能撤销。"));
+  $("clearBtn").addEventListener("click", () => askConfirm("clear", "隐藏当前公共词球内容并重新加载？公共数据不会被删除。"));
+  $("resetBtn").addEventListener("click", () => loadPlanet().then(() => announce("已重新加载公共星球。")));
   $("cancelAction").addEventListener("click", () => { closeConfirm(); $("librarySearch").focus(); });
   $("confirmAction").addEventListener("click", () => {
     if (!pendingAction) return;
-    const operation = pendingAction === "delete" ? { type: "delete", word: selectedWord } : { type: "replace", items: pendingAction === "reset" ? C.randomSamples() : [] };
-    if (pendingAction === "delete") {
-      const node = entries.get(selectedWord);
-      cancelEffects();
-      if (node) { node.element.remove(); entries.delete(selectedWord); nodes = nodes.filter((item) => item !== node); }
-      redistribute();
-      stats();
-    } else if (pendingAction === "clear") replaceEntries([]);
-    else if (pendingAction === "reset") replaceEntries(operation.items);
     closeConfirm();
-    announce(persist(operation) ? "词语收藏已更新。" : "收藏已更新，但本地保存失败，刷新后可能丢失。", !storage);
+    loadPlanet().then(() => announce("已重新加载公共星球。"));
     libraryList();
     $("librarySearch").focus();
   });
@@ -745,24 +802,21 @@
     if (pointer) releasePointer({ pointerId: pointer.id });
     inertiaX = 0; inertiaY = 0;
   });
-  // Avoid silently overwriting changes made in another tab.
-  window.addEventListener("storage", (event) => {
-    if (event.key !== STORAGE_KEY && event.key !== null) return;
-    if (pendingWrites || unsavedOperations.length) return;
-    const latest = C.readStored(storage, STORAGE_KEY);
-    if (!latest.error) {
-      persistedEntries = latest.entries === null ? previewEntries : latest.entries;
-      replaceEntries(persistedEntries);
-      if (dialog.open) { closeConfirm(); libraryList(); }
-      announce("词球已与另一个窗口同步。");
-    }
+  window.addEventListener("online", () => { setConnection("online"); loadPlanet(); });
+  window.addEventListener("offline", () => setConnection("offline", "网络已断开 · 请稍后重试"));
+  $("shareBtn")?.addEventListener("click", async () => {
+    const shareData = { title: "心光 · INNER LIGHT", text: "来看看这颗公共同频星球", url: location.href };
+    try {
+      if (navigator.share) await navigator.share(shareData);
+      else { await navigator.clipboard.writeText(location.href); const toast = $("shareToast"); toast.hidden = false; setTimeout(() => { toast.hidden = true; }, 2200); }
+    } catch (_) { /* sharing can be cancelled */ }
   });
 
-  replaceEntries(initialEntries);
+  replaceEntries(previewEntries);
   resize();
   new ResizeObserver(resize).observe(stage);
   updateMotionHint();
-  if (saved.error) announce("未能读取本地收藏，已载入初始星球。新念头仍可正常发送。", true);
-  $("saveStatus").textContent = saved.error || !storage ? "本地收藏暂不可用" : "仅保存在这台设备";
+  setConnection("connecting");
+  loadPlanet();
   wake();
 })();

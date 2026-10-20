@@ -79,6 +79,13 @@ h1 span { color: var(--mint); }
 .empty-state p { font-size: 13px; letter-spacing: .1em; }
 .sphere-caption { display: flex; align-items: center; justify-content: center; gap: 12px; color: #77908e; font-size: 10px; letter-spacing: .12em; margin-top: 2px; }
 .caption-rule { width: 24px; height: 1px; background: var(--line); }
+.recent-strip { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 28px; color: #829893; font-size: 10px; }
+.recent-label { color: #6f918c; letter-spacing: .1em; }
+.recent-list { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.recent-word, .recent-empty { padding: 4px 8px; border: 1px solid #b4ecd91f; border-radius: 999px; color: #b9d7cf; }
+.recent-empty { color: #66827e; }
+.save-status.offline { color: #e1ad99; }
+.share-toast { position: fixed; left: 50%; bottom: 28px; z-index: 20; transform: translateX(-50%); padding: 10px 15px; border: 1px solid #b4ecd955; border-radius: 999px; background: #172a2bea; color: var(--mint); font-size: 12px; }
 .sphere-toolbar { display: flex; justify-content: space-between; align-items: center; max-width: 680px; margin: 16px auto 18px; gap: 10px; }
 .enrich-button { border: 0; padding: 8px 0; background: transparent; color: #93d4d3; font-size: 11px; }
 .enrich-button:hover { color: var(--mint); }
