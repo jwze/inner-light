@@ -132,7 +132,7 @@
     const names = new Set(persistedEntries.map((item) => item.word));
     const removed = nodes.filter((node) => !names.has(node.word));
     if (removed.length) {
-      cancelEffects();
+      cancelEffects(true);
       for (const node of removed) { node.element.remove(); entries.delete(node.word); }
       nodes = nodes.filter((node) => names.has(node.word));
     }
@@ -259,19 +259,20 @@
     wake();
   }
 
-  function cancelEffects() {
-    flights.forEach((flight) => { flight.element.remove(); flight.path.remove(); });
-    rings.forEach(removeImpact);
-    chargeGlow = 0;
-    $("wordForm").style.setProperty("--charge", "0");
-    stage.style.setProperty("--impact", "0");
-    flights = [];
-    rings = [];
+  function cancelEffects(preserveLocal = false) {
+    for (const flight of flights) {
+      if (!preserveLocal || !flight.local) { flight.element.remove(); flight.path.remove(); }
+    }
+    flights = preserveLocal ? flights.filter((flight) => flight.local) : [];
+    if (!preserveLocal) { rings.forEach(removeImpact); rings = []; }
+    chargeGlow = flights.length ? chargeGlow : 0;
+    $("wordForm").style.setProperty("--charge", String(chargeGlow));
+    if (!preserveLocal) stage.style.setProperty("--impact", "0");
     nodes.forEach((node) => { node.pending = 0; node.element.classList.remove("arriving"); });
   }
 
   function replaceEntries(items) {
-    cancelEffects();
+    cancelEffects(true);
     layer.replaceChildren();
     entries = new Map();
     nodes = [];
@@ -315,7 +316,7 @@
     impact.surface.remove();
   }
 
-  function startFlight(node, isNew) {
+  function startFlight(node, isNew, local = false) {
     if (reduced) return;
     if (flights.length >= MAX_FLIGHTS) land(flights.shift(), false);
     const element = document.createElement("div");
@@ -337,7 +338,7 @@
     });
     if (isNew) { node.pending++; node.element.classList.add("arriving"); }
     chargeGlow = 1;
-    flights.push({ node, element, path, halo, core, lock, dust, elapsed: 0, duration: 1.22, isNew, bend: (Math.random() < .5 ? -1 : 1), seed: Math.random() * Math.PI * 2 });
+    flights.push({ node, local, element, path, halo, core, lock, dust, elapsed: 0, duration: 1.22, isNew, bend: (Math.random() < .5 ? -1 : 1), seed: Math.random() * Math.PI * 2 });
   }
 
   function land(flight, withImpact = true) {
@@ -345,9 +346,10 @@
     flight.element.remove();
     flight.path.remove();
     if (flight.isNew) node.pending = Math.max(0, node.pending - 1);
-    if (!node.pending) node.element.classList.remove("arriving");
-    if (entries.get(node.word) !== node || reduced || !withImpact) return;
-    node.pulse = 1;
+    if (!flight.local && !node.pending) node.element.classList.remove("arriving");
+    if (reduced || !withImpact || (!flight.local && entries.get(node.word) !== node)) return;
+    const publicNode = entries.get(node.word);
+    if (publicNode) publicNode.pulse = 1;
     if (rings.length >= MAX_IMPACTS) removeImpact(rings.shift());
     const normal = FX.unit(node.point);
     const element = document.createElement("div");
@@ -382,27 +384,10 @@
       announce(`「${word}」已达到 ${C.MAX_FREQUENCY} 次共鸣。试着送入另一个念头吧。`, true);
       return false;
     }
-    if (isNew) {
-      node = createNode({ word, frequency: 1 }, nodes.length);
-      redistribute();
-      const facing = nodes.reduce((best, item) => {
-        const point = item.target;
-        const depth = renderMatrix[6] * point.x + renderMatrix[7] * point.y + renderMatrix[8] * point.z;
-        return depth > best.depth ? { node: item, depth } : best;
-      }, { node, depth: -Infinity }).node;
-      const previousTarget = node.target;
-      node.target = facing.target;
-      facing.target = previousTarget;
-      const previousOrder = node.layoutOrder;
-      node.layoutOrder = facing.layoutOrder;
-      facing.layoutOrder = previousOrder;
-      node.point = { ...node.target };
-    } else {
-      node.frequency++;
-      setLabelMetrics(node, nodes.indexOf(node));
-    }
-    startFlight(node, isNew);
-    stats();
+    // A private visual target is not a public word. Fast pending/queued/rejected
+    // responses may reconcile the collection immediately, but must not erase this flight.
+    const point = node ? { ...node.point } : FX.unit({ x: renderMatrix[6], y: renderMatrix[7], z: renderMatrix[8] });
+    startFlight({ word, point }, false, true);
     announce(`「${word}」正在送入公共星球…`);
     submitToServer(word, isNew);
     wake();
@@ -428,7 +413,8 @@
       flight.elapsed += dt;
       const t = C.clamp(flight.elapsed / flight.duration, 0, 1);
       const p = FX.cometProgress(flight.elapsed, flight.duration);
-      const ex = flight.node.x, ey = flight.node.y;
+      const destination = flight.local ? projectEffect(flight.node.point) : flight.node;
+      const ex = destination.x, ey = destination.y;
       flight.lock.setAttribute("cx", String(ex));
       flight.lock.setAttribute("cy", String(ey));
       flight.lock.setAttribute("r", String(10 + (1 - p) * 24));
