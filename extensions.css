@@ -1,0 +1,49 @@
+/* Public tools: isolated from the sphere and existing library UI. */
+.ext-dialog { color: var(--text, #e5edee); background: var(--bg, #111225); border: 1px solid #8bccc44d; border-radius: 20px; width: min(900px, calc(100% - 24px)); max-height: calc(100dvh - 40px); padding: clamp(18px, 4vw, 34px); overflow: auto; box-shadow: 0 24px 100px #0009; color-scheme: dark; }
+.ext-dialog::backdrop { background: #050915c9; backdrop-filter: blur(6px); }
+.ext-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 14px; }
+.ext-heading h2 { margin: 0; color: var(--mint, #8ef7ed); font-weight: 500; font-size: 22px; }
+.ext-close { width: 44px; height: 44px; flex: 0 0 auto; border: 1px solid #aacfc43d; border-radius: 50%; color: inherit; background: transparent; font-size: 28px; line-height: 1; }
+.ext-close:hover { background: #558f8a33; border-color: var(--mint, #8ef7ed); }
+.ext-description, .ext-status { font-size: 13px; line-height: 1.8; color: #b0c6c9; }
+.ext-status { min-height: 1.8em; margin-bottom: 0; overflow-wrap: anywhere; }
+.ext-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 16px 0; }
+.ext-button { border: 1px solid #9be7d94d; border-radius: 10px; padding: 10px 15px; min-height: 44px; background: #243d424d; color: #d0f7ef; font: inherit; font-size: 13px; }
+.ext-button:hover { background: #558f8a33; border-color: var(--mint, #8ef7ed); }
+.ext-dialog button:focus-visible, .ext-dialog input:focus-visible, .ext-dialog select:focus-visible, .ext-dialog summary:focus-visible { outline: 2px solid var(--mint, #8ef7ed); outline-offset: 3px; }
+.ext-dialog input, .ext-dialog select { background: #0e1723; color: #ecf7f5; border: 1px solid #9bcfc655; border-radius: 8px; padding: 10px; min-height: 44px; max-width: 100%; font: inherit; }
+.ext-dialog select { margin-left: 8px; }
+.ext-url { width: 100%; }
+.ext-share-preview { display: grid; grid-template-columns: minmax(100px, 1fr) minmax(180px, 1.6fr); gap: 20px; align-items: center; margin: 20px 0; }
+.ext-share-preview canvas { display: block; max-width: 100%; width: 100%; height: auto; border-radius: 8px; border: 1px solid #aecfc633; }
+.ext-share-preview canvas:first-child { max-width: 280px; margin: auto; }
+.ext-chart, .ext-network { display: block; width: 100%; height: auto; background: #0c14214d; border-radius: 12px; margin: 12px 0; }
+.ext-gridline { stroke: #9bcfc633; }
+.ext-axis { fill: #afc7ce; font: 12px sans-serif; }
+.ext-bar { fill: var(--mint, #8ef7ed); }
+.ext-edge { stroke: #8be3df; stroke-opacity: .26; }
+.ext-network-node { fill: var(--mint, #8ef7ed); stroke: #d6fff4; stroke-width: 1; }
+.ext-network-label { fill: #e4f1f0; font: 13px sans-serif; paint-order: stroke; stroke: #111225; stroke-width: 3px; stroke-linejoin: round; }
+.ext-table-wrap { overflow-x: auto; margin: 14px 0; }
+.ext-table { border-collapse: collapse; width: 100%; text-align: left; font-size: 13px; font-variant-numeric: tabular-nums; }
+.ext-table caption { text-align: left; color: #acc7c6; margin-bottom: 10px; }
+.ext-table th, .ext-table td { padding: 10px; border-bottom: 1px solid #9bcfc62e; overflow-wrap: anywhere; min-width: 66px; }
+.ext-table th { font-weight: 500; color: #caf0e9; }
+.ext-table td { color: #bdcfd3; }
+.ext-data { margin: 12px 0; border: 1px solid #9bcfc62e; border-radius: 10px; padding: 12px; }
+.ext-data summary { cursor: pointer; color: #badbd3; min-height: 24px; }
+.ext-empty { color: #a7bfc5; line-height: 1.8; padding: 22px 12px; background: #88c4be0a; border-radius: 10px; }
+.ext-dialog h3 { font-size: 17px; line-height: 1.5; font-weight: 500; overflow-wrap: anywhere; }
+.ext-dialog h4 { font-size: 15px; font-weight: 500; color: #caf0e9; margin: 26px 0 12px; }
+.ext-outbox-item { border: 1px solid #9bcfc633; border-radius: 12px; padding: 14px; margin-top: 14px; overflow-wrap: anywhere; }
+.ext-outbox-item h3 { margin: 0; }
+.ext-outbox-item input { width: 100%; margin-top: 8px; }
+.header-actions:has(#openShareTools) { flex-wrap: wrap; column-gap: 18px; row-gap: 0; }
+@media (max-width: 540px) {
+  .ext-dialog { padding: 18px; max-height: calc(100dvh - 24px); }
+  .ext-share-preview { grid-template-columns: 1fr; }
+  .ext-share-preview canvas:first-child { max-width: 210px; }
+  .ext-share-preview canvas:last-child { max-width: 380px; margin: auto; }
+  .ext-actions .ext-button { flex-grow: 1; }
+}
+@media (prefers-reduced-motion: reduce) { .ext-dialog::backdrop { backdrop-filter: none; } }

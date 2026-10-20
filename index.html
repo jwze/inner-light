@@ -8,6 +8,12 @@
     <title>心光 · INNER LIGHT</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23080e19'/%3E%3Cpath d='M32 10v44M10 32h44M16 16l32 32M48 16L16 48' stroke='%23b4ecd9' stroke-width='2'/%3E%3C/svg%3E" />
     <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="extensions.css" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="vendor/icon-192.png" />
+    <script src="vendor/qrcode.js" defer></script>
+    <script src="offline.js" defer></script>
+    <script src="extensions.js" defer></script>
     <script src="core.js" defer></script>
     <script src="effects.js" defer></script>
     <script src="app.js" defer></script>
@@ -16,7 +22,7 @@
     <div class="app-shell">
       <header class="site-header">
         <a class="brand" href="index.html" aria-label="心光首页"><span class="brand-mark" aria-hidden="true">✳</span><span>心光 <span class="brand-en">INNER LIGHT</span></span></a>
-        <div class="header-actions"><span id="saveStatus" class="save-status">连接公共星球中…</span><button id="shareBtn" class="quiet-button" type="button">分享星球 <span aria-hidden="true">↗</span></button><button id="libraryBtn" class="quiet-button" type="button" aria-haspopup="dialog">词语收藏 <span aria-hidden="true">↗</span></button></div>
+        <div class="header-actions"><span id="saveStatus" class="save-status">连接公共星球中…</span><button id="openShareTools" class="quiet-button" type="button">二维码与海报 ↗</button><button id="openInsights" class="quiet-button" type="button">星球洞察 ↗</button><button id="openOutbox" class="quiet-button" type="button">发送箱</button><button id="libraryBtn" class="quiet-button" type="button" aria-haspopup="dialog">公共词库 ↗</button></div>
       </header>
 
       <main>

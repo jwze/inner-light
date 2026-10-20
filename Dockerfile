@@ -1,7 +1,14 @@
+FROM node:24-alpine AS build
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY . .
+RUN npm run build && npm run check && npm prune --omit=dev
+
 FROM node:24-alpine
 WORKDIR /app
-COPY package.json core.js effects.js app.js server.js database.js index.html admin.html style.css ./
-RUN mkdir /app/data && chown -R node:node /app
+COPY --from=build --chown=node:node /app /app
+RUN mkdir -p /app/data && chown -R node:node /app/data
 ENV NODE_ENV=production PORT=3000 HOST=0.0.0.0 DATA_DIR=/app/data
 USER node
 EXPOSE 3000

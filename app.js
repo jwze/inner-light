@@ -153,7 +153,7 @@
   let submitting = false;
   let streamConnected = false;
   function updateSubmitAvailability() {
-    $("sendBtn").disabled = submitting || connectionState !== "online";
+    $("sendBtn").disabled = submitting;
   }
 
   async function loadPlanet() {
@@ -165,14 +165,14 @@
       openRealtime();
       return true;
     } catch (error) {
-      setConnection("offline", "离线预览 · 提交不可用");
+      setConnection("offline", "离线模式 · 可保存待发送");
       if (!hasSnapshot) {
         let cached;
         try { cached = JSON.parse(storage?.getItem(STORAGE_KEY) || "null"); } catch (_) { /* ignore invalid cache */ }
         if (cached?.items && cached?.planet?.slug === PLANET_SLUG) applyPlanetSnapshot(cached, null, true);
         else { replaceEntries(previewEntries); updatePublicStats({ totalSubmissions: 0, todaySubmissions: 0, activeVisitors: 0, uniqueVisitors: 0 }); updateRecent([]); }
       }
-      announce(`${error.message} 当前仅可浏览，连接恢复后可继续发送。`, true);
+      announce(`${error.message} 当前可离线保存到发送箱，联网后自动提交。`, true);
       return false;
     }
   }
@@ -199,16 +199,18 @@
     submitting = true;
     updateSubmitAvailability();
     try {
-      const payload = await apiRequest(`/planets/${encodeURIComponent(PLANET_SLUG)}/words`, { method: "POST", body: JSON.stringify({ word }) });
-      applyPlanetSnapshot(payload);
-      setConnection("online", streamConnected ? undefined : "公共星球 · 定时同步");
-      announce(`「${word}」${isNew ? "已加入公共星球" : `· 第 ${payload.item.frequency} 次共鸣`}`);
+      const payload = await window.InnerLightOffline.submit(PLANET_SLUG, word);
+      if (payload.queued) {
+        replaceEntries(persistedEntries);
+        announce(`「${word}」已安全保存到发送箱；待发送或被拒绝的内容可在发送箱中查看。`);
+      } else {
+        applyPlanetSnapshot(payload);
+        announce(payload.status === "pending" ? `「${word}」已送达，等待审核。` : payload.status === "rejected" ? `「${word}」未通过审核：${payload.reason || "内容不适合公开"}` : `「${word}」${isNew ? "已加入公共星球" : `· 第 ${payload.item.frequency} 次共鸣`}`);
+      }
     } catch (error) {
       replaceEntries(persistedEntries);
-      // Re-read authoritative state: an interrupted response may still have committed.
-      const calibrated = await loadPlanet();
       if (!input.value) { input.value = word; updateInputCount(); }
-      announce(`${error.message} ${calibrated ? "已校准公共数据，请确认结果后重试。" : "仍离线；结果可能已提交，恢复连接后请先确认再重试。"}`, true);
+      announce(`${error.message} 未能保存到发送箱，请勿关闭页面。`, true);
     } finally { submitting = false; updateSubmitAvailability(); }
   }
 
@@ -367,7 +369,6 @@
 
   function sendWord(raw) {
     if (submitting) { announce("正在发送，请稍候。"); return false; }
-    if (connectionState !== "online") { announce("当前离线，仅可浏览，连接恢复后可发送。", true); return false; }
     const result = C.validateWord(raw);
     if (!result.ok) { announce(result.error, true); return false; }
     const word = result.word;
@@ -808,19 +809,19 @@
   });
   window.addEventListener("online", () => { setConnection("online"); loadPlanet(); });
   window.addEventListener("offline", () => setConnection("offline", "网络已断开 · 请稍后重试"));
-  $("shareBtn")?.addEventListener("click", async () => {
-    const shareData = { title: "心光 · INNER LIGHT", text: "来看看这颗公共同频星球", url: location.href };
-    try {
-      if (navigator.share) await navigator.share(shareData);
-      else { await navigator.clipboard.writeText(location.href); const toast = $("shareToast"); toast.hidden = false; setTimeout(() => { toast.hidden = true; }, 2200); }
-    } catch (_) { /* sharing can be cancelled */ }
-  });
 
   replaceEntries(previewEntries);
   resize();
   new ResizeObserver(resize).observe(stage);
   updateMotionHint();
   setConnection("connecting");
+  window.InnerLightExtensions.configure({ getState: () => ({ slug: PLANET_SLUG, name: $("planetName").textContent, stats: publicStats, url: location.href, sphereElement: stage }), getWords: () => persistedEntries });
+  window.addEventListener("innerlight:delivered", ({ detail }) => {
+    if (detail.slug !== PLANET_SLUG || !detail.payload?.items) return;
+    applyPlanetSnapshot(detail.payload);
+    if (detail.payload.status === "pending") announce(`「${detail.payload.item?.word || "念头"}」已送达，等待管理员审核。`);
+    else if (detail.payload.status === "rejected") announce(`提交未通过审核：${detail.payload.reason || "内容不适合公开"}`, true);
+  });
   loadPlanet();
   setInterval(() => { if (!document.hidden && !submitting) loadPlanet(); }, 15000);
   wake();

@@ -1,80 +1,13 @@
 <!doctype html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>心光 · 管理后台</title>
-  <style>
-    :root { color-scheme: dark; font-family: system-ui, sans-serif; background: #111225; color: #e5edee; }
-    body { max-width: 980px; margin: 0 auto; padding: 32px 20px; }
-    h1 { font-weight: 400; color: #8ef7ed; } h2 { font-weight: 400; }
-    section { border: 1px solid #b4ecd922; border-radius: 14px; padding: 18px; margin: 18px 0; background: #ffffff05; }
-    input, button, select { font: inherit; padding: 9px 12px; border-radius: 7px; border: 1px solid #b4ecd933; background: #17232c; color: inherit; }
-    button { cursor: pointer; color: #8ef7ed; } button:disabled { opacity: .45; cursor: not-allowed; }
-    .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; } input { min-width: 120px; max-width: 100%; box-sizing: border-box; }
-    .summary { color: #9aafab; } #message { min-height: 24px; color: #8ef7ed; }
-    .danger { color: #efb8a8; border-color: #efb8a844; }
-    table { border-collapse: collapse; width: 100%; } th, td { text-align: left; border-bottom: 1px solid #b4ecd914; padding: 9px 5px; overflow-wrap: anywhere; }
-    td:last-child { text-align: right; } .word { color: #cde1d9; } .frequency { color: #96b0a7; }
-    pre { white-space: pre-wrap; max-height: 360px; overflow: auto; color: #b9cacc; }
-  </style>
-</head>
-<body>
-  <h1>心光 · SQLite 管理后台</h1>
-  <section>
-    <div class="toolbar"><label>管理令牌 <input id="token" type="password" autocomplete="off" /></label><label>星球 <input id="planet" value="default" /></label><button id="load">加载数据</button><button id="export">导出完整 JSON</button></div>
-    <p id="message" role="status" aria-live="polite"></p>
-  </section>
-  <section><h2>星球设置</h2><div class="toolbar"><label>名称 <input id="name" maxlength="50" /></label><label>主题 <select id="theme"><option value="nebula">星云</option><option value="ocean">海洋</option><option value="forest">森林</option></select></label><button id="save">保存设置</button><a id="view" href="/" target="_blank" rel="noopener">打开公共页面 ↗</a></div></section>
-  <section><h2>公共词球</h2><p id="summary" class="summary"></p><div class="toolbar"><label>搜索 <input id="search" placeholder="寻找词语…" /></label><label><input id="hidden" type="checkbox" />只看已屏蔽</label><button id="clear" class="danger">屏蔽全部词语</button></div><table><thead><tr><th>词语</th><th>共鸣数</th><th>状态</th><th>操作</th></tr></thead><tbody id="words"><tr><td colspan="4">请输入管理员令牌后加载。</td></tr></tbody></table></section>
-  <section><h2>提交记录（预览最近 100 条，完整记录包含在导出中）</h2><pre id="recent">—</pre></section>
-  <section><h2>管理操作记录</h2><pre id="audit">—</pre></section>
-  <script>
-    const $ = (id) => document.getElementById(id);
-    let current = null;
-    const planet = () => encodeURIComponent($('planet').value || 'default');
-    async function request(path, options = {}) {
-      const response = await fetch(`${path}${path.includes('?') ? '&' : '?'}planet=${planet()}`, { ...options, signal: AbortSignal.timeout(10000), headers: { 'Content-Type': 'application/json', 'X-Admin-Token': $('token').value, ...(options.headers || {}) } });
-      const value = await response.json();
-      if (!response.ok) throw new Error(value.message || '请求失败');
-      return value;
-    }
-    function renderWords() {
-      if (!current) return;
-      const query = $('search').value.toLowerCase();
-      const rows = current.words.filter((item) => item.word.toLowerCase().includes(query) && (!$('hidden').checked || item.hidden)).map((item) => {
-        const row = document.createElement('tr');
-        for (const text of [item.word, String(item.frequency), item.hidden ? '已屏蔽' : item.isSeed ? '示例' : '公开']) { const cell = document.createElement('td'); cell.textContent = text; row.append(cell); }
-        const cell = document.createElement('td'); const button = document.createElement('button'); button.textContent = item.hidden ? '恢复' : '屏蔽';
-        button.addEventListener('click', async () => {
-          button.disabled = true;
-          try { await request(`/api/admin/words/${encodeURIComponent(item.word)}${item.hidden ? '/restore' : ''}`, { method: item.hidden ? 'POST' : 'DELETE' }); await load(); $('message').textContent = `已${item.hidden ? '恢复' : '屏蔽'}「${item.word}」。`; }
-          catch (error) { $('message').textContent = error.message; button.disabled = false; }
-        });
-        cell.append(button); row.append(cell); return row;
-      });
-      $('words').replaceChildren(...rows);
-    }
-    async function load() {
-      try {
-        const value = await request('/api/admin/export'); current = value;
-        $('summary').textContent = `${value.planet.name} · ${value.stats.wordCount} 个公开词语 · ${value.stats.totalSubmissions} 次真实提交 · 今日 ${value.stats.todaySubmissions} 次（UTC） · ${value.stats.activeVisitors} 位活跃 / ${value.stats.uniqueVisitors} 位独立访客`;
-        $('name').value = value.planet.name; $('theme').value = value.planet.theme;
-        $('view').href = `/?planet=${encodeURIComponent(value.planet.slug)}`;
-        $('recent').textContent = JSON.stringify(value.submissions.slice(0, 100), null, 2);
-        $('audit').textContent = JSON.stringify(value.moderation.slice(0, 100), null, 2);
-        renderWords(); $('message').textContent = '数据已从 SQLite 加载。'; return value;
-      } catch (error) { current = null; $('words').replaceChildren(); $('message').textContent = error.message; return null; }
-    }
-    $('load').addEventListener('click', load);
-    $('search').addEventListener('input', renderWords); $('hidden').addEventListener('change', renderWords);
-    $('save').addEventListener('click', async () => { try { await request('/api/admin/planet', { method: 'POST', body: JSON.stringify({ name: $('name').value, theme: $('theme').value }) }); await load(); } catch (error) { $('message').textContent = error.message; } });
-    $('clear').addEventListener('click', async () => { if (!confirm('将当前星球所有词语屏蔽？可在已屏蔽列表逐一恢复。')) return; try { await request('/api/admin/clear', { method: 'POST' }); await load(); } catch (error) { $('message').textContent = error.message; } });
-    $('export').addEventListener('click', async () => {
-      const value = await load(); if (!value) return;
-      const link = document.createElement('a'); const href = URL.createObjectURL(new Blob([JSON.stringify(value, null, 2)], { type: 'application/json' }));
-      link.href = href; link.download = `inner-light-${value.planet.slug}.json`; link.click(); setTimeout(() => URL.revokeObjectURL(href), 1000);
-    });
-  </script>
-</body>
-</html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>心光 · 管理后台</title><link rel="icon" href="/icon.svg"><link rel="stylesheet" href="/extensions.css"><script src="/admin.js" defer></script><style>
+:root{color-scheme:dark;font-family:system-ui,sans-serif;background:#111225;color:#e5edee}body{max-width:1100px;margin:auto;padding:24px}h1,h2{font-weight:400}h1{color:#8ef7ed}section{border:1px solid #b4ecd922;border-radius:14px;padding:18px;margin:18px 0;background:#ffffff05}input,button,select,textarea{font:inherit;padding:8px;border-radius:7px;border:1px solid #b4ecd933;background:#17232c;color:inherit;max-width:100%;box-sizing:border-box}button{cursor:pointer;color:#8ef7ed}button:disabled{opacity:.4;cursor:not-allowed}.toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px}label{display:inline-flex;align-items:center;gap:6px}input[type=checkbox]{width:auto}#message{min-height:24px;color:#8ef7ed}table{border-collapse:collapse;width:100%}th,td{text-align:left;border-bottom:1px solid #b4ecd914;padding:9px 5px;overflow-wrap:anywhere}pre{white-space:pre-wrap;max-height:240px;overflow:auto;color:#b9cacc}.muted{color:#9aafab}.scroll{overflow:auto}.danger{color:#efb8a8}textarea{width:100%;min-height:80px}#userRole{font-weight:bold}[hidden]{display:none!important}
+</style></head><body>
+<h1>心光 · 审核与数据管理</h1>
+<section><h2>登录</h2><div class="toolbar"><label>用户名 <input id="loginName" autocomplete="username"></label><label>密码 <input id="loginPassword" type="password" autocomplete="current-password"></label><button id="login">账户登录</button><button id="logout">退出</button></div><p class="muted">首次使用由环境 ADMIN_TOKEN 以所有者身份创建账户。令牌不会保存到浏览器缓存。</p><div class="toolbar"><label>引导令牌 <input id="token" type="password" autocomplete="off"></label><label>星球 <input id="planet" value="default" list="planetList"></label><datalist id="planetList"></datalist><button id="load">加载星球</button><span id="userRole"></span></div><p id="message" role="status" aria-live="polite"></p></section>
+<section id="settingsPanel"><h2>星球设置</h2><div class="toolbar"><label>名称 <input id="name" maxlength="50"></label><label>主题 <select id="theme"><option value="nebula">星云</option><option value="ocean">海洋</option><option value="forest">森林</option></select></label><label><input id="reviewMode" type="checkbox">所有提交先审核</label><button id="save">保存设置</button><a id="view" target="_blank" rel="noopener" href="/">打开公共页面 ↗</a></div><p class="muted">配置第三方语义审核后，服务不可用或内容被标记时会转入人工待审，不会静默放行。</p></section>
+<section><h2>待审核提交</h2><button id="refreshReviews">刷新待审</button><div class="scroll"><table><thead><tr><th>内容</th><th>状态/原因</th><th>时间</th><th>操作</th></tr></thead><tbody id="reviews"></tbody></table></div></section>
+<section><h2>公共词球</h2><p id="summary" class="muted"></p><div class="toolbar"><label>搜索 <input id="search" placeholder="寻找词语…"></label><label><input id="hidden" type="checkbox">只看已屏蔽</label><button id="clear" class="danger">屏蔽全部词语</button></div><div class="scroll"><table><thead><tr><th>词语</th><th>共鸣数</th><th>状态</th><th>操作</th></tr></thead><tbody id="words"></tbody></table></div></section>
+<section id="backupPanel"><h2>导出与导入恢复</h2><div class="toolbar"><button id="export">完整 JSON 备份</button><button id="exportCSV">CSV 词库导出</button></div><p class="muted">JSON 保存词频、审核状态、完整提交记录；CSV 仅包含 word,frequency,hidden 三列。合并按词频最大值更新、历史 sourceKey 去重；替换会清除当前词库/提交历史，请先备份。单次不超过 5MB / 10000 条记录。</p><div class="toolbar"><input id="importFile" type="file" accept=".json,.csv"><label>模式 <select id="importMode"><option value="merge">合并</option><option value="replace">替换恢复</option></select></label><label>替换确认 slug <input id="importConfirm"></label><button id="import">导入所选文件</button></div></section>
+<section id="usersPanel"><h2>管理员与房间权限</h2><p class="muted">owner 所有者可管理账户与数据；moderator 审核员只能读数据和审核/屏蔽；viewer 只读。范围为逗号分隔 slug 或 *。密码至少 12 位。</p><div class="toolbar"><label>用户名 <input id="newName"></label><label>初始密码 <input id="newPassword" type="password"></label><label>角色 <select id="newRole"><option value="viewer">viewer</option><option value="moderator">moderator</option><option value="owner">owner</option></select></label><label>房间范围 <input id="newPlanets" value="default"></label><button id="createUser">创建账户</button></div><div id="users"></div></section>
+<section><h2>提交历史预览（最近 100 条）</h2><pre id="recent">—</pre></section><section><h2>管理操作记录</h2><pre id="audit">—</pre></section>
+</body></html>

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">心光</title><desc id="desc">深色星空中的薄荷色星芒</desc>
+  <rect width="128" height="128" rx="30" fill="#080e19"/>
+  <circle cx="64" cy="64" r="35" fill="#152d38" stroke="#73e4d6" stroke-width="2"/>
+  <path d="M64 20v88M20 64h88M33 33l62 62M95 33L33 95" stroke="#b4ecd9" stroke-width="3" stroke-linecap="round" opacity=".9"/>
+  <circle cx="64" cy="64" r="8" fill="#e4fff7"/><circle cx="64" cy="64" r="14" fill="none" stroke="#73e4d6" stroke-width="2" opacity=".8"/>
+</svg>

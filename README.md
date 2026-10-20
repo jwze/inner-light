@@ -1,172 +1,155 @@
 # 心光 · INNER LIGHT
 
-一个公开的互动文字星球：访客匿名提交念头，所有人的共鸣会聚合在同一颗公共星球中。前端保留原有的 3D 词球和彗星动画，服务端使用 SQLite 持久化。
+公共旋转文字星球，Node.js 24 + SQLite + 原生浏览器前端。所有人共享房间词频，匿名发送；支持审核、PWA 离线发送、分享海报、趋势关系图和管理员分权。
 
-## 运行要求
-
-- Node.js 24+（使用内置 `node:sqlite`，不需要安装原生 npm 数据库依赖）
-- Docker Desktop（可选）
-
-## 本机单机运行
+## 本机运行
 
 ```bash
 cp .env.example .env
-# 编辑 .env，至少设置 ADMIN_TOKEN
+# 编辑 .env，为 ADMIN_TOKEN 设置长随机值
+npm ci
 npm start
 ```
 
-打开：<http://localhost:3000>
+首页 <http://localhost:3000/>，后台 <http://localhost:3000/admin>。`npm start` 自动构建本地二维码组件和 PWA PNG 图标；无需 CDN。Node 内置 SQLite 当前会打印 ExperimentalWarning。
 
-管理后台：<http://localhost:3000/admin>
+数据：`data/inner-light.sqlite`（WAL 模式）。`.env`、`data/`、`node_modules/`、生成的 `vendor/` 不提交 Git。
 
-SQLite 文件默认位置：
-
-```text
-data/inner-light.sqlite
-data/inner-light.sqlite-wal
-data/inner-light.sqlite-shm
-```
-
-这些运行时文件不会提交到 Git。
-
-## Docker 运行
+## Docker / Redis / 双实例
 
 ```bash
-cp .env.example .env
 docker compose up -d --build
+# 可选：启动共享本机 SQLite 卷的第二实例
+docker compose --profile replica up -d --build
 ```
 
-默认打开：<http://localhost:3001>
-
-查看状态和日志：
+- 主实例：<http://localhost:3001/>
+- 第二实例：<http://localhost:3002/>
+- 管理后台：相应实例的 `/admin`
+- Redis：Compose 内部网络，不公开端口
+- SQLite 卷：`planet-data`；Redis 卷：`redis-data`
 
 ```bash
-docker compose ps
+docker compose --profile replica ps
 docker compose logs -f
+docker compose --profile replica down
 ```
 
-停止服务：
+两个实例共享**同一台机器的** SQLite 卷，通过 Redis Pub/Sub 立即向其他实例的 SSE 客户端广播。不是多服务器数据库复制，不应把 WAL SQLite 放到网络文件系统。启动顺序由 Compose 保证先主实例完成迁移。Redis 故障时仍能提交 SQLite，客户端通过重连快照/15 秒轮询校准；Pub/Sub 不承诺历史消息重放。
 
-```bash
-docker compose down
-```
+## 公开页面扩展
 
-Docker 使用 named volume `planet-data` 保存 SQLite 数据，容器重建或重启不会丢失数据。
+### 二维码与 PNG 海报
 
-## 配置
+点击“二维码与海报”，本地生成当前 URL 的二维码和 **1080×1440** 星球快照海报，包含当前角度的词球、星球名、真实共鸣统计和二维码。可分别下载 PNG、复制链接或调用系统分享。没有第三方截图上传。
+
+二维码分享的是当前 URL。要让其他设备访问，应部署到可达的域名/局域网地址；`localhost` 二维码只适用于本机。
+
+### 趋势与词语关系
+
+“星球洞察”支持 7/30/90 天（UTC）的每日趋势、本期/上期热度增减及关系网络，附可访问的数据表。关系定义：同一匿名访客在 30 分钟内共同提交的词语，计算最近 3000 条已通过记录，最多 30 个节点/60 条边；**不是 AI 语义相似或个人关系推断**。公共接口不输出访客标识。
+
+### PWA 和离线发送
+
+安装支持的浏览器会显示“安装应用”。Service Worker 缓存公开应用壳，**不缓存后台或 API 响应**。最近公共数据另存本机缓存。离线打开、输入和发送会先写入 IndexedDB；恢复网络自动排队发送。
+
+- 每项带稳定 `requestId`，服务端按星球+匿名访客+请求编号去重，避免响应丢失后重复计数。
+- 页面/多标签/Service Worker 用 IDB 租约协调，不依赖单标签内存队列。
+- 429、网络和 5xx 保留并退避；4xx 永久拒绝标为“需要处理”。
+- “发送箱”可查看状态；被拒绝项可编辑/原文重试（新请求编号）或删除。
+- 201 已通过、202 待审核/驳回都视为已送达，不反复重发。
+- Background Sync 支持时可在页面关闭后重试；不支持时由下次打开/联网/定时器继续。
+- 清浏览器数据会删除队列；清 Cookie 或更换设备会改变身份。请勿把此队列当作跨设备备份。
+- 安装、Service Worker、剪贴板需要 HTTPS 或 localhost 安全上下文。
+
+## 审核流程与第三方语义审核
+
+后台“所有提交先审核”可配置房间预审（新房间默认开启）：`pending → approved/rejected`。待审和驳回不会进入公开词球、趋势或真实共鸣数。审核通过只计数一次；重复审批返回冲突。屏蔽保留词频，阻止再提交；可恢复。操作记录包含操作者。
+
+环境配置支持 OpenAI-compatible moderation API：
 
 ```dotenv
-PORT=3000
-HOST=127.0.0.1
-DATA_DIR=./data
-DOCKER_PORT=3001
-ADMIN_TOKEN=replace-with-a-long-random-token
-MAX_SUBMISSIONS_PER_MINUTE=20
-MAX_SUBMISSIONS_PER_HOUR=200
-MODERATION_WORDS=
-TRUST_PROXY=0
+MODERATION_URL=https://api.openai.com/v1/moderations
+MODERATION_API_KEY=<通过本机环境或 .env 配置，不要提交>
+MODERATION_MODEL=omni-moderation-latest
+MODERATION_TIMEOUT_MS=5000
 ```
 
-- `ADMIN_TOKEN` 为空时，管理接口关闭。
-- `MODERATION_WORDS` 是逗号分隔的精确禁词列表。
-- 只有在前置代理会覆盖 `X-Forwarded-For` 时才设置 `TRUST_PROXY=1`。
-- 生产环境建议通过 HTTPS、反向代理和安全的随机管理员令牌部署。
+适配协议：
 
-## 公共 API
+```text
+POST MODERATION_URL
+Authorization: Bearer MODERATION_API_KEY
+{ "input": "提交文本", "model": "..." }
+```
+
+接受 `{results:[{flagged:boolean}]}`；标记为风险时转人工待审。也可接自有网关 `{decision:"approved"|"pending"|"rejected",reason:"..."}`。超时、5xx、格式错误**一律转待审**，不静默放行。房间预审开启时，即便语义服务通过也仍需人工审核。
+
+未配置外部 URL 时仅按房间人工预审设置工作，健康接口报告 `moderation:manual-only`。代码适配及协议故障路径已验证；真实供应商调用需要你自己的账户、endpoint 和 API key，未配置凭据不等于已启用第三方服务。
+
+## 多角色后台
+
+1. 首次在 `/admin` 输入 `.env` 中的 ADMIN_TOKEN，加载星球，以引导所有者身份创建正式账户。
+2. 普通管理员用用户名/密码登录，12 小时 HttpOnly、SameSite=Strict 会话；密码 scrypt 加盐保存，登录每 IP 每分钟最多 5 次。
+3. 可创建、禁用、启用、变更角色和房间范围；权限变更使旧会话失效；最后一个账户所有者不能被禁用或降级。
+
+| 角色 | 权限 |
+|---|---|
+| owner | 账户管理、设置、导入恢复、批量屏蔽及所有读/审核操作 |
+| moderator | 指定房间读取、通过/驳回、屏蔽/恢复；不能导入、改设置或管理账户 |
+| viewer | 指定房间只读 |
+
+房间范围为逗号分隔 slug 或 `*`。非默认房间只有 owner 可创建（后台输入新 slug 后加载），最多 100 个。
+
+ADMIN_TOKEN 仍是紧急引导凭据，设置高熵值或在创建 owner 后移除。默认本机绑定；公开部署必须 HTTPS、强密码、可信代理和备份。读角色可读取其房间的管理导出（含匿名关联标签），请只授权可信人员。
+
+## CSV / JSON 导入恢复
+
+后台支持：
+
+- JSON 备份：词频、状态、完整提交历史（含审核状态）、星球设置和审核记录。
+- CSV 词库：`word,frequency,hidden`，支持逗号/引号转义和 BOM；公式前缀安全转义并可往返导入。
+- 合并：相同词频取最大值，历史按 sourceKey 去重，不重复累加；hidden/示例标识按导入值更新。
+- 替换：必须输入 slug 确认；清空当前词库和提交历史后恢复，管理员账户/密钥/访客表不删除，管理审计链保留。
+- 全量校验+SQLite 事务：错误文件不产生部分写入。单次最多 5MB、10000 条历史、160 个公开词。
+
+CSV 只包含词库，不恢复历史统计。完整 JSON 导出可大于单次导入上限，大规模数据应使用 SQLite 备份。完整数据库灾备（含账户和密钥）请使用 SQLite Backup API 或停止服务后复制数据文件；不能只拷贝正在写入的主文件而忽略 WAL。
+
+## 主要接口
 
 ```text
 GET  /api/health
-GET  /api/planets/:slug/words
-POST /api/planets/:slug/words       { "word": "旅行" }
-GET  /api/planets/:slug/recent?limit=20
-GET  /api/planets/:slug/stats
-GET  /api/planets/:slug/events      SSE
-```
-
-不同 slug 对应独立 SQLite 星球，例如：
-
-```text
-http://localhost:3000/?planet=default
-http://localhost:3000/?planet=summer-night
-```
-
-默认星球启动时创建；其他星球需管理员在后台输入 slug 并加载创建，匿名访问不会创建房间。最多 100 个星球。
-
-## 管理 API 和后台
-
-管理后台地址：`/admin`。请求必须携带：
-
-```text
-X-Admin-Token: <ADMIN_TOKEN>
-```
-
-接口：
-
-```text
-GET    /api/admin/export?planet=default
-GET    /api/admin/words?planet=default
+GET  /api/planets/:slug/words|recent|stats|events|analytics|relations
+POST /api/planets/:slug/words {word,requestId}
+POST /api/auth/login {name,password}
+POST /api/auth/logout
+GET  /api/auth/me
+GET  /api/admin/planets
+GET/POST /api/admin/users
+POST /api/admin/users/:id
+GET  /api/admin/export?planet=default
+GET  /api/admin/export.csv?planet=default
+POST /api/admin/import?planet=default {format:"json"|"csv",mode:"merge"|"replace",data?,content?,confirm?}
+GET  /api/admin/reviews?planet=default
+POST /api/admin/reviews/:id?planet=default {decision:"approved"|"rejected"}
 DELETE /api/admin/words/:word?planet=default
-POST   /api/admin/words/:word/restore?planet=default
-POST   /api/admin/clear?planet=default
-POST   /api/admin/planet?planet=default
-       { "name": "海洋星球", "theme": "ocean" }
+POST /api/admin/words/:word/restore?planet=default
+POST /api/admin/clear?planet=default
+POST /api/admin/planet?planet=default {name,theme,reviewMode}
 ```
 
-管理后台支持：
+管理接口使用登录 Cookie，或引导令牌 `X-Admin-Token`。`analytics?days=7|30|90`，`recent?limit=1..50`。
 
-- 查看真实提交总数、今日提交数、活跃访客和独立访客
-- 搜索词语
-- 屏蔽/恢复词语
-- 屏蔽整颗星球
-- 修改星球名称和主题（星云、海洋、森林）
-- 查看管理操作记录
-- 导出完整 JSON，包括词语、提交历史和审核记录
-
-## 已实现能力
-
-- 公共聚合词球，频率由服务端 SQLite 事务维护
-- 105+ 并发提交下的原子频率递增
-- 完整提交历史和准确的今日统计，不再截断为最近 100 条
-- 匿名 HttpOnly Cookie 和 HMAC 标识
-- IP + 访客双维度分钟/小时限流
-- 服务端输入校验、请求体限制、同源写请求保护
-- SQLite WAL、事务、重启持久化和旧 JSON 数据一次性迁移
-- SSE 初始快照、心跳、自动重连后重新校准
-- 15 秒轮询兜底，避免 SSE 断线遗漏数据
-- 前端乐观动画、失败后权威数据校准、离线只读模式
-- 公共最近抵达列表、统计显示和主题应用
-- 分享按钮和 `?planet=` 分享链接
-- 管理员屏蔽、恢复、批量屏蔽、主题设置、审计记录和完整导出
-- Docker 健康检查和 named volume 持久化
-
-## 数据库表
-
-SQLite 中包含：
-
-- `planets`：星球元数据、版本号
-- `words`：公共词语、频率、隐藏状态、示例标识
-- `submissions`：完整提交事件历史
-- `visitors`：匿名访客首次/最近访问
-- `rate_events`：持久化限流窗口
-- `moderation_log`：屏蔽、恢复和批量操作记录
-- `settings`：身份密钥和迁移标记
-
-## 旧版本迁移
-
-如果 `DATA_DIR` 下存在旧版本的：
-
-```text
-planet.json
-planets/*.json
-```
-
-首次启动会将词语、提交记录、星球设置和版本信息迁移到 `inner-light.sqlite`。旧 JSON 文件不会自动删除，确认 SQLite 正常后可以手动归档。
-
-## 检查
+## 检查与升级
 
 ```bash
+npm ci
+npm run build
 npm run check
+npm audit --omit=dev
 git diff --check
 ```
 
-注意：Node 24 的 `node:sqlite` 当前会显示 ExperimentalWarning，这是运行时提示，不影响功能。
+启动时兼容旧 SQLite 表，保留原数据；旧 JSON `planet.json` / `planets/*.json` 首次迁移并保留源文件。部署升级前先备份 SQLite。旧 JSON 的历史缺失和累计基数无法凭空恢复。
+
+验收范围见 [FEATURE_AUDIT.md](FEATURE_AUDIT.md)。
