@@ -37,7 +37,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .scene-tools button:hover { border-color: #d8e5d45c; background: #234036b3; color: var(--text); }
 .scene-tools .share-control { color: var(--text); }
 .universe { position: absolute; z-index: 1; top: 47%; left: 56%; width: min(980px, 76vw); height: min(880px, calc(100% - 128px)); transform: translate(-50%, -50%); }
-.universe :is(button, .sphere-stage):focus-visible { outline: 2px solid var(--mint); outline-offset: 3px; }
+.universe button:focus-visible { outline: 2px solid var(--mint); outline-offset: 3px; }
 .transmission { position: absolute; pointer-events: none; z-index: 3; left: 40px; bottom: 112px; width: 460px; max-width: calc(100% - 80px); }
 .section-kicker { display: flex; align-items: center; gap: 9px; margin: 0 0 16px; color: #bdcbbb; font-size: 11px; font-weight: 500; letter-spacing: .04em; }
 .section-kicker > span { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px #f36b451a; }
@@ -56,8 +56,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .feedback { position: absolute; top: 100%; left: 2px; right: 0; margin: 8px 0 0; color: #c1dfc9; font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
 .feedback:empty { display: none; }
 .feedback.error { color: #ffb398; }
-.gesture-note { position: absolute; z-index: 3; right: 40px; bottom: 116px; max-width: 300px; color: #a3b5a6; font-size: 11px; line-height: 1.8; text-align: right; }
-.gesture-note p { margin: 0 0 2px; }
 .scene-footer { position: absolute; z-index: 10; inset: auto 40px 24px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
 .orbit-stats { display: flex; align-items: center; gap: 8px; margin: 0; }
 .orbit-stats > div { display: flex; align-items: center; gap: 7px; min-width: 0; padding: 10px 13px; border: 1px solid #d8e5d41f; border-radius: 999px; background: #1c342cbd; backdrop-filter: blur(10px); }
@@ -81,7 +79,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .install-button:hover { color: var(--accent); }
 
 /* Keep the original word projection, rotation and arrival effects. */
-.sphere-stage { position: relative; height: 100%; width: 100%; isolation: isolate; touch-action: none; cursor: grab; outline-offset: -6px; }
+.sphere-stage { position: relative; height: 100%; width: 100%; isolation: isolate; touch-action: none; cursor: grab; outline: none; }
 .sphere-stage.dragging { cursor: grabbing; touch-action: none; }
 .ambient-glow { position: absolute; left: 50%; top: 50%; width: var(--sphere-diameter, 340px); aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%; background: radial-gradient(circle at 43% 35%, #69ebe608, #6859b80a 55%, transparent 72%); pointer-events: none; }
 .particle-layer { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
@@ -142,7 +140,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
   .orbit-stats { gap: 6px; }
   .orbit-stats > div { padding-inline: 10px; }
   .scene-notes { gap: 12px; }
-  .gesture-note { right: 28px; max-width: 240px; }
 }
 @media (min-width: 801px) and (max-height: 740px) {
   .transmission { bottom: 104px; }
@@ -150,7 +147,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
   .section-kicker { margin-bottom: 12px; }
   .introduction-copy { margin-top: 10px; }
   .composer { margin-top: 18px; }
-  .gesture-note { bottom: 106px; }
 }
 @media (max-width: 800px) {
   .cosmos { min-height: 640px; }
@@ -172,8 +168,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
   .char-count { font-size: 9px; }
   .send-button { min-height: 44px; gap: 8px; padding: 11px 14px; font-size: 13px; }
   .feedback { margin-top: 5px; font-size: 11px; line-height: 1.6; }
-  .gesture-note { inset: 94px 20px auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; max-width: none; text-align: left; }
-  .gesture-note p { margin: 0; color: #93aa9b; font-size: 10px; line-height: 1.6; }
   .scene-footer { inset: auto 20px max(12px, env(safe-area-inset-bottom)); flex-direction: column; align-items: stretch; gap: 6px; }
   .orbit-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
   .orbit-stats > div { flex-direction: column-reverse; gap: 2px; padding: 8px 4px; border-radius: 16px; }
@@ -197,12 +191,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
   .char-count { display: none; }
   .send-button { padding-inline: 12px; }
   .scene-footer { inset-inline: 16px; }
-  .gesture-note { inset-inline: 16px; }
 }
 @media (max-width: 800px) and (max-height: 740px) {
   .universe { top: 35%; height: 46%; }
-  .gesture-note { top: 80px; justify-content: flex-end; }
-  .gesture-note p { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; }

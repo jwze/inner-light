@@ -161,10 +161,11 @@
       const actions = node('div', undefined, 'ext-actions ext-share-actions');
       const posterDownload = button('保存海报 ↓', () => download(poster, 'inner-light-poster.png', downloadStatus), 'ext-button ext-share-primary');
       const generate = async () => {
+        if (preview.getAttribute('aria-busy') === 'true') return;
         const current = state(), snapshot = captureSphere(current.sphereElement);
         shareDialog.dataset.url = current.url;
         fallback.hidden = true;
-        posterDownload.disabled = true; preview.setAttribute('aria-busy', 'true'); message.textContent = '生成中…';
+        posterDownload.disabled = refresh.disabled = true; preview.setAttribute('aria-busy', 'true'); message.textContent = '生成中…';
         try {
           if (document.fonts?.ready) await document.fonts.ready;
           await qr(posterQR, current.url);
@@ -172,14 +173,16 @@
           window.InnerLightUI?.enhanceImage(poster, { title: '星球海报' });
           message.textContent = ''; posterDownload.disabled = false;
         } catch (error) { message.textContent = error.message || '生成失败，请重试'; }
-        finally { preview.removeAttribute('aria-busy'); }
+        finally { refresh.disabled = false; preview.removeAttribute('aria-busy'); }
       };
+      const refresh = button('↻', generate, 'ext-button ext-share-refresh');
+      refresh.setAttribute('aria-label', '刷新海报'); refresh.title = '刷新海报';
       actions.append(posterDownload, button('复制链接', () => copyURL(shareDialog.dataset.url || state().url, message, fallback)), button('分享 ↗', async () => {
         const url = shareDialog.dataset.url || state().url;
         if (!navigator.share) { await copyURL(url, message, fallback); return; }
         try { await navigator.share({ title: state().name, text: '来我的心光星球，遇见同频的念头。', url }); message.textContent = '分享已打开'; }
         catch (error) { if (error.name !== 'AbortError') await copyURL(url, message, fallback); }
-      }, 'ext-button ext-share-native'));
+      }, 'ext-button ext-share-native'), refresh);
       shareDialog.append(preview, actions, fallback, message); shareDialog.generate = generate;
     }
     show(shareDialog); void shareDialog.generate();

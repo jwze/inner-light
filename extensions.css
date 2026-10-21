@@ -164,6 +164,7 @@ body.public-ui .ext-share-image { display: flex; align-items: center; justify-co
 body.public-ui .ext-share-poster canvas { display: block; flex: none; width: min(100%, calc(var(--share-poster-height) * .75)); height: auto; aspect-ratio: 3 / 4; border-radius: 10px; box-shadow: 0 12px 36px #0004; }
 body.public-ui dialog.ui-dialog .ext-share-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; padding: 0; margin: 22px 0 0; border: 0; }
 body.public-ui dialog.ui-dialog .ext-share-primary { min-width: 142px; }
+body.public-ui dialog.ui-dialog .ext-share-actions .ext-share-refresh { flex: 0 0 44px; min-width: 44px; height: 44px; padding: 0; font-size: 23px; font-weight: 400; }
 body.public-ui .ext-share-dialog .ext-status { text-align: center; font-size: 13px; }
 body.public-ui .ext-share-dialog .ext-url { margin-top: 12px; }
 

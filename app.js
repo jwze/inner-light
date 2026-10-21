@@ -691,10 +691,6 @@
     if (!raf && !document.hidden) raf = requestAnimationFrame(frame);
   }
 
-  function updateMotionHint() {
-    $("interactionHint").textContent = reduced ? "已减少动态效果 · 拖动星球探索" : "滑动星球 · 遇见同频的念头";
-  }
-
   function libraryList() {
     const search = C.normalizeWord($("librarySearch").value).toLocaleLowerCase();
     const filtered = nodes.filter((node) => node.word.toLocaleLowerCase().includes(search)).sort((a, b) => b.frequency - a.frequency);
@@ -809,7 +805,6 @@
       cancelEffects();
       nodes.forEach((node) => { node.point = { ...node.target }; node.pulse = 0; });
     }
-    updateMotionHint();
     wake();
   });
   document.addEventListener("visibilitychange", () => {
@@ -825,7 +820,6 @@
   replaceEntries(previewEntries);
   resize();
   new ResizeObserver(resize).observe(stage);
-  updateMotionHint();
   window.InnerLightExtensions.configure({ getState: () => ({ slug: PLANET_SLUG, name: planetName, stats: publicStats, url: location.href, sphereElement: stage }), getWords: () => persistedEntries });
   window.addEventListener("innerlight:delivered", ({ detail }) => {
     if (detail.slug !== PLANET_SLUG || !detail.payload?.items) return;
