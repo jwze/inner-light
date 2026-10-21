@@ -324,7 +324,7 @@
       const entries = await window.InnerLightOffline.list();
       if (version !== outboxVersion) return;
       const openButton = $('openOutbox');
-      if (openButton) { openButton.textContent = `发送箱${entries.length ? ` (${entries.length})` : ''}`; openButton.setAttribute('aria-label', `离线发送箱，${entries.length} 条待处理`); }
+      if (openButton) { (openButton.querySelector('span') || openButton).textContent = `发送箱${entries.length ? ` (${entries.length})` : ''}`; openButton.setAttribute('aria-label', `离线发送箱，${entries.length} 条待处理`); }
       if (!outboxDialog?.open) return;
       const list = $('outboxEntries');
       // Keep a focused edit field intact when another tab emits an update.
