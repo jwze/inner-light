@@ -2,18 +2,71 @@
 
 公共旋转文字星球，Node.js 24 + SQLite + 原生浏览器前端。所有人共享房间词频，匿名发送；支持审核、PWA 离线发送、分享海报、趋势关系图和管理员分权。
 
-## 本机运行
+## Windows 本机启动
 
-```bash
-cp .env.example .env
-# 编辑 .env，为 ADMIN_TOKEN 设置长随机值
-npm ci
-npm start
+需要 Node.js 24 或更新版本。打开 PowerShell，先进入项目目录；安装依赖通常只在首次启动或依赖更新后执行：
+
+```powershell
+Set-Location C:\workspace\code\github\inner-light
+node --version
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+npm.cmd ci
+npm.cmd start
 ```
 
-首页 <http://localhost:3000/>，后台 <http://localhost:3000/admin>。`npm start` 自动构建本地二维码组件和 PWA PNG 图标；无需 CDN。Node 内置 SQLite 当前会打印 ExperimentalWarning。
+PowerShell 中使用 `npm.cmd` 可避免 `npm.ps1` 执行策略限制，效果与 `npm` 相同，不需要修改系统执行策略。
 
-数据：`data/inner-light.sqlite`（WAL 模式）。`.env`、`data/`、`node_modules/`、生成的 `vendor/` 不提交 Git。
+已有 `.env` 时保留原文件，不要用示例覆盖管理员令牌或数据路径。首次使用可编辑 `.env`，设置长随机 `ADMIN_TOKEN`。常用本机设置为：
+
+```dotenv
+PORT=3000
+HOST=127.0.0.1
+DATA_DIR=./data
+```
+
+`npm start` 自动先构建二维码组件、PWA 图标和资源版本，再启动 `node server.js`。终端需要保持打开；看到 `Inner Light: http://localhost:3000` 后，访问首页 <http://localhost:3000/> 或后台 <http://localhost:3000/admin>。Node 内置 SQLite 可能打印 ExperimentalWarning，这不是启动失败。
+
+数据默认在 `data/inner-light.sqlite`（WAL 模式），数据库和必要目录会自动创建；重启沿用现有数据，不需要 Redis。`.env`、`data/`、`node_modules/`、生成的 `vendor/` 不提交 Git。不要删除 `data/`，也不要把本机目录与原 Docker 数据卷误认为同一份数据。
+
+### 停止旧服务与端口占用
+
+在原来的启动终端按 `Ctrl+C`，然后重新运行 `npm start`。如果找不到原终端，先在 PowerShell 查询 3000 端口的进程：
+
+```powershell
+$serviceIds = Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue |
+  Select-Object -ExpandProperty OwningProcess -Unique
+$serviceIds | ForEach-Object {
+  Get-CimInstance Win32_Process -Filter ("ProcessId=" + $_)
+} | Select-Object ProcessId, Name, CommandLine
+```
+
+仅在确认这些进程属于本项目后，才执行以下命令停止；如果端口没有被占用，直接启动即可。
+
+```powershell
+Stop-Process -Id $serviceIds
+npm.cmd start
+```
+
+不要终止电脑上的所有 Node 进程。服务端代码或静态资源白名单改动后必须重启服务，刷新网页不会重新加载 Node 内存中的代码。本项目的 `npm start` 不包含服务端自动热重载。
+
+### 更新后页面没有变化
+
+旧 Node 进程可能继续读取磁盘上的新 HTML/CSS/JS，但仍保留旧的接口和静态资源白名单，造成首页能打开、新增文件却返回 404。例如首页引用 `ui.js`、`ui.css`，而旧进程尚未允许这两个资源时，新界面无法完整加载；PWA 也可能因资源缺失而保留旧缓存。
+
+先停止旧进程并重新 `npm start`，再在浏览器按 `Ctrl+Shift+R`。重启后可以在另一个 PowerShell 窗口确认：
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:3000/api/health
+(Invoke-WebRequest -UseBasicParsing http://127.0.0.1:3000/ui.js).StatusCode
+```
+
+健康接口应包含 `deployment: single`，`ui.js` 应返回 `200`。如果仍看到旧界面，在 Chrome / Edge 按 `F12` → `Application`：
+
+1. 在 `Service Workers` 中取消注册当前站点的 Service Worker。
+2. 在 `Cache Storage` 中只删除 `inner-light-public-` 开头的应用壳缓存。
+3. 关闭同一站点的其他标签页或已安装 PWA 窗口，再重新打开并刷新。
+
+不要为了更新界面使用“清除所有站点数据”，也不要删除 IndexedDB；其中保存着本设备尚未送达的发送箱内容。`localhost` 与 `127.0.0.1` 是不同的浏览器来源，排查时应针对实际使用的地址操作。
 
 ## Docker 单实例部署（供用户自行执行）
 
