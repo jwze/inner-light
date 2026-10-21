@@ -30,7 +30,7 @@
   let renderMatrix = [1, 0, 0, 0, 1, 0, 0, 0, 1];
   let pendingSubmission = null;
   let layoutInitialized = false;
-  let arrivalEchoes = [];
+  let resonanceGains = [];
   function screenToSphere(point) {
     // The inverse of an orthogonal rotation is its transpose.
     const m = renderMatrix;
@@ -38,19 +38,20 @@
       y: m[1] * point.x + m[4] * point.y + m[7] * point.z,
       z: m[2] * point.x + m[5] * point.y + m[8] * point.z };
   }
-  function showArrivalEcho(submission, point = screenToSphere(submission.screenPoint)) {
-    if (submission.echoShown) return;
-    submission.echoShown = true;
-    if (arrivalEchoes.length >= MAX_FLIGHTS) arrivalEchoes.shift().element.remove();
-    const element = document.createElement('div');
-    element.className = 'flight-word arrival-echo';
-    element.setAttribute('aria-hidden', 'true');
-    const label = document.createElement('span');
-    label.className = 'comet-label';
-    label.textContent = submission.word;
-    element.append(label);
-    $('effectLayer').append(element);
-    arrivalEchoes.push({ element, point: { ...point }, elapsed: 0, duration: 2 });
+  function showResonanceGain(submission) {
+    const node = entries.get(submission.word);
+    if (submission.gainShown || !submission.approved || !submission.landed || !node || node !== submission.targetNode) return;
+    submission.gainShown = true;
+    node.pulse = reduced ? 0 : 1;
+    if (!reduced) createImpact(node.point, node);
+    if (resonanceGains.length >= MAX_FLIGHTS) resonanceGains.shift().element.remove();
+    const element = document.createElement("div");
+    element.className = "resonance-gain";
+    element.setAttribute("aria-hidden", "true");
+    element.textContent = "+1";
+    $("effectLayer").append(element);
+    resonanceGains.push({ element, node, elapsed: 0, duration: reduced ? 1.4 : 1.1 });
+    updateResonanceGains(0);
     wake();
   }
   function localSubmissionFor(word) {
@@ -84,20 +85,20 @@
     const node = entries.get(submission.word);
     if (!node) return;
     submission.approved = true;
-    node.pulse = 1;
-    if (submission.isNew) bindSubmittedNode(submission, node);
-    // Existing words keep their sphere coordinates; a private arrival label provides front feedback.
-    if (!submission.isNew && submission.landed) showArrivalEcho(submission);
+    if (submission.isNew) { node.pulse = 1; bindSubmittedNode(submission, node); }
+    else showResonanceGain(submission);
     wake();
   }
-  function updateArrivalEchoes(dt) {
-    arrivalEchoes = arrivalEchoes.filter(echo => {
-      echo.elapsed += dt;
-      const t = echo.elapsed / echo.duration;
-      if (t >= 1) { echo.element.remove(); return false; }
-      const at = projectEffect(echo.point, 1.025);
-      echo.element.style.transform = `translate3d(${at.x}px,${at.y}px,0) translate(-50%,-50%)`;
-      echo.element.style.opacity = String(Math.min(1, (1 - t) * 3) * C.clamp((at.z + .1) / .5, 0, 1));
+  function updateResonanceGains(dt) {
+    resonanceGains = resonanceGains.filter(gain => {
+      gain.elapsed += dt;
+      const t = gain.elapsed / gain.duration;
+      if (t >= 1 || entries.get(gain.node.word) !== gain.node) { gain.element.remove(); return false; }
+      const node = gain.node;
+      const rise = reduced ? 0 : 20 * (1 - (1 - t) ** 2);
+      const pop = reduced ? 1 : 1 + Math.sin(Math.min(1, t * 5) * Math.PI) * .14;
+      gain.element.style.transform = `translate3d(${node.x}px,${node.y - node.h * node.scale / 2 - 12 - rise}px,0) translate(-50%,-100%) scale(${pop})`;
+      gain.element.style.opacity = String(Math.min(1, (1 - t) * 4) * C.sphereDepth(node.depth).opacity);
       return true;
     });
   }
@@ -398,12 +399,16 @@
   function startFlight(node, isNew, local = false, submission = null) {
     if (reduced) return;
     if (flights.length >= MAX_FLIGHTS) land(flights.shift(), false);
+    const resonance = local && submission && !submission.isNew;
     const element = document.createElement("div");
-    element.className = "flight-word";
-    const label = document.createElement("span");
-    label.className = "comet-label";
-    label.textContent = node.word;
-    element.append(label);
+    element.className = resonance ? "flight-word resonance-flight" : "flight-word";
+    element.setAttribute("aria-hidden", "true");
+    if (!resonance) {
+      const label = document.createElement("span");
+      label.className = "comet-label";
+      label.textContent = node.word;
+      element.append(label);
+    }
     $("effectLayer").append(element);
     // One SVG group owns both the wide halo and narrow plasma core, plus dust.
     const path = svgElement("g", "flight-trail", $("flightSvg"));
@@ -417,7 +422,7 @@
     });
     if (isNew) { node.pending++; node.element.classList.add("arriving"); }
     chargeGlow = 1;
-    flights.push({ node, hiddenNode: isNew ? node : null, local, submission, element, path, halo, core, lock, dust, elapsed: 0, duration: 1.22, isNew, bend: (Math.random() < .5 ? -1 : 1), seed: Math.random() * Math.PI * 2 });
+    flights.push({ node, hiddenNode: isNew ? node : null, local, submission, element, path, halo, core, lock, dust, elapsed: 0, duration: resonance ? .82 : 1.22, resonance, isNew, bend: (Math.random() < .5 ? -1 : 1), seed: Math.random() * Math.PI * 2 });
   }
 
   function land(flight, withImpact = true) {
@@ -429,32 +434,33 @@
       flight.submission.landed = true;
       flight.submission.landingPoint = { ...node.point };
       flight.submission.landedNode = withImpact && entries.get(node.word) === node ? node : null;
-      if (withImpact && flight.submission.approved && !flight.submission.isNew) showArrivalEcho(flight.submission, node.point);
+      if (withImpact && flight.resonance) showResonanceGain(flight.submission);
     }
-    if (reduced || !withImpact || (!flight.local && entries.get(node.word) !== node)) return;
+    if (flight.resonance || reduced || !withImpact || (!flight.local && entries.get(node.word) !== node)) return;
     const publicNode = entries.get(node.word);
     if (publicNode) publicNode.pulse = 1;
     createImpact(node.point);
   }
 
-  function createImpact(point) {
+  function createImpact(point, resonanceNode = null) {
     if (rings.length >= MAX_IMPACTS) removeImpact(rings.shift());
     const normal = FX.unit(point);
     const element = document.createElement("div");
-    element.className = "arrival-ring";
+    element.className = resonanceNode ? "arrival-ring resonance-impact" : "arrival-ring";
     const flash = document.createElement("i");
     flash.className = "impact-flare";
     element.append(flash);
-    const sparks = Array.from({ length: 16 }, (_, index) => {
+    const sparkCount = resonanceNode ? 8 : 16;
+    const sparks = Array.from({ length: sparkCount }, (_, index) => {
       const spark = document.createElement("i");
       spark.className = "impact-spark";
       element.append(spark);
-      return { element: spark, angle: index * Math.PI * 2 / 16 + Math.random() * .15, distance: 28 + Math.random() * 58 };
+      return { element: spark, angle: index * Math.PI * 2 / sparkCount + Math.random() * .15, distance: resonanceNode ? 12 + Math.random() * 20 : 28 + Math.random() * 58 };
     });
     $("effectLayer").append(element);
     const surface = svgElement("g", "surface-wave", $("flightSvg"));
     const paths = Array.from({ length: 2 }, () => ({ front: svgElement("path", "wave-front", surface), back: svgElement("path", "wave-back", surface) }));
-    rings.push({ element, surface, paths, sparks, normal, basis: FX.tangentBasis(normal), elapsed: 0, duration: 1.45 });
+    rings.push({ element, surface, paths, sparks, normal, basis: FX.tangentBasis(normal), elapsed: 0, duration: resonanceNode ? .85 : 1.45, resonanceNode });
   }
 
   function sendWord(raw) {
@@ -479,9 +485,9 @@
     const screenPoint = { x: Math.cos(angle) * offset, y: Math.sin(angle) * offset,
       z: Math.sqrt(1 - offset * offset) };
     const point = screenToSphere(screenPoint);
-    const submission = { word, isNew, screenPoint, landed: reduced, approved: false, echoShown: false };
+    const submission = { word, isNew, screenPoint, targetNode: node || null, landed: reduced, approved: false, gainShown: false };
     pendingSubmission = submission;
-    startFlight({ word, point, screenPoint }, false, true, submission);
+    startFlight(node || { word, point, screenPoint }, false, true, submission);
     announce(`「${word}」正在送入公共星球…`);
     submitToServer(submission);
     wake();
@@ -508,7 +514,8 @@
       const t = C.clamp(flight.elapsed / flight.duration, 0, 1);
       const p = FX.cometProgress(flight.elapsed, flight.duration);
       if (flight.local && flight.node.screenPoint) flight.node.point = screenToSphere(flight.node.screenPoint);
-      const destination = flight.local ? projectEffect(flight.node.point) : flight.node;
+      // Public labels include perspective, wave lift and edge clamping from this frame.
+      const destination = entries.get(flight.node.word) === flight.node ? flight.node : projectEffect(flight.node.point);
       const ex = destination.x, ey = destination.y;
       flight.lock.setAttribute("cx", String(ex));
       flight.lock.setAttribute("cy", String(ey));
@@ -546,7 +553,12 @@
 
   function surfaceEnergy(point) {
     let energy = 0;
-    for (const impact of rings) energy += FX.waveInfluence(point, impact.normal, impact.elapsed / impact.duration);
+    for (const impact of rings) {
+      const progress = impact.elapsed / impact.duration;
+      energy += impact.resonanceNode
+        ? FX.waveInfluence(point, impact.normal, progress * .35) * (1 - progress) * .55
+        : FX.waveInfluence(point, impact.normal, progress);
+    }
     return Math.min(1.3, energy);
   }
 
@@ -557,7 +569,7 @@
       const t = C.clamp(impact.elapsed / impact.duration, 0, 1);
       if (t >= 1) { removeImpact(impact); return false; }
       glow += Math.sin(t * Math.PI) * .65;
-      const origin = projectEffect(impact.normal, 1.015);
+      const origin = impact.resonanceNode ? { x: impact.resonanceNode.x, y: impact.resonanceNode.y, z: impact.resonanceNode.depth } : projectEffect(impact.normal, 1.015);
       impact.element.style.transform = `translate3d(${origin.x}px,${origin.y}px,0)`;
       impact.element.style.opacity = String((1 - t) ** 1.8 * (origin.z < 0 ? .4 : 1));
       impact.element.style.setProperty("--burst-scale", String(.4 + t * 3.2));
@@ -571,7 +583,7 @@
         const progress = Math.max(0, t - index * .11);
         let front = "", back = "", previousFront = null;
         for (let i = 0; i <= 64; i++) {
-          const point = projectEffect(FX.ringPoint(impact.basis, progress * 2.6, i / 64 * Math.PI * 2), 1.012);
+          const point = projectEffect(FX.ringPoint(impact.basis, progress * (impact.resonanceNode ? .91 : 2.6), i / 64 * Math.PI * 2), 1.012);
           const near = point.z > 0;
           const command = i && previousFront === near ? " L" : " M";
           if (near) front += `${command}${point.x.toFixed(1)},${point.y.toFixed(1)}`;
@@ -703,8 +715,8 @@
     const settling = render(dt);
     updateFlights(dt);
     updateImpacts(dt);
-    updateArrivalEchoes(dt);
-    if (moving || settling || flights.length || rings.length || arrivalEchoes.length || chargeGlow > 0 || running) wake();
+    updateResonanceGains(dt);
+    if (moving || settling || flights.length || rings.length || resonanceGains.length || chargeGlow > 0 || running) wake();
     else lastTime = null;
   }
 

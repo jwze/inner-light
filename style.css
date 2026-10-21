@@ -102,12 +102,17 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .comet-label { display: block; overflow: hidden; text-overflow: ellipsis; position: relative; z-index: 1; }
 .flight-word::before { content: ""; position: absolute; inset: -15px -5px; background: radial-gradient(ellipse, #d0ffe84d, #49eacb28 35%, transparent 70%); transform: scale(calc(.8 + var(--comet-energy, 0) * .7)); z-index: -1; }
 .flight-word::after { content: ""; position: absolute; inset: 0; border: 1px solid #a6ffe882; border-radius: 50%; box-shadow: 0 0 14px #6fffdc66, inset 0 0 14px #6fffdc22; transform: rotate(-15deg) scale(1.05, 1.25); }
-.arrival-echo { padding: 5px 12px; font-size: 17px; }
-.arrival-echo::after { display: none; }
+.resonance-flight { width: 10px; height: 10px; max-width: none; padding: 0; border-radius: 50%; background: #effff9; box-shadow: 0 0 8px #d0fff2, 0 0 20px #68f3d9; }
+.resonance-flight::before { inset: -12px; background: radial-gradient(circle, #b4fff780, #5cebc322 40%, transparent 70%); }
+.resonance-flight::after { inset: -4px; border-color: #b8fff2aa; border-radius: 50%; transform: none; box-shadow: 0 0 10px #6fffdc66; }
+.resonance-gain { position: absolute; left: 0; top: 0; padding: 3px 8px; border: 1px solid #9fffe340; border-radius: 999px; background: #102e27ed; color: #c6ffed; font-size: 16px; font-weight: 650; line-height: 1.25; font-variant-numeric: tabular-nums; white-space: nowrap; box-shadow: 0 0 16px #71edcc25; text-shadow: 0 0 8px #90ffdd55; will-change: transform, opacity; }
 .arrival-ring { position: absolute; left: 0; top: 0; width: 0; height: 0; will-change: transform; }
 .impact-flare { position: absolute; left: -35px; top: -35px; width: 70px; height: 70px; border-radius: 50%; background: radial-gradient(circle, #e7fff7b0, #7bffe544 24%, transparent 65%); transform: scale(var(--burst-scale, 1)); }
 .impact-flare::before, .impact-flare::after { content: ""; position: absolute; inset: 33px -20px; background: linear-gradient(90deg, transparent, #e5fff6, transparent); box-shadow: 0 0 8px #a0ffe4; }
 .impact-flare::after { transform: rotate(90deg); }
+.resonance-impact .impact-flare { left: -22px; top: -22px; width: 44px; height: 44px; background: radial-gradient(circle, #e7fff794, #7bffe533 24%, transparent 65%); }
+.resonance-impact .impact-flare::before, .resonance-impact .impact-flare::after { inset: 21px -8px; }
+.resonance-impact .impact-spark { width: 3px; height: 2px; }
 .impact-spark { position: absolute; left: 0; top: 0; width: 4px; height: 2px; border-radius: 50%; background: #d5ffed; box-shadow: 0 0 6px #79ffd8; }
 .surface-wave path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
 .wave-front { stroke: #9dffe6; stroke-width: 1.6; filter: drop-shadow(0 0 4px #7fffd6); }
