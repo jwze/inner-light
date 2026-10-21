@@ -57,7 +57,6 @@
 .ext-outbox-item p { font-size: 13px; line-height: 1.7; }
 .ext-outbox-item label { color: #92afa0; font-size: 13px; }
 .ext-outbox-item input { width: 100%; margin-top: 8px; }
-.header-actions:has(#openShareTools) { flex-wrap: wrap; column-gap: 18px; row-gap: 0; }
 
 @media (max-width: 600px) {
   .ext-dialog { width: calc(100% - 24px); }

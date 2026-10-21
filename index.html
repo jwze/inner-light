@@ -23,15 +23,23 @@
   <body>
     <div class="app-shell">
       <header class="site-header">
-        <a class="brand" href="index.html" aria-label="心光首页"><span class="brand-mark" aria-hidden="true">✳</span><span>心光 <span class="brand-en">INNER LIGHT</span></span></a>
-        <div class="header-actions"><span id="saveStatus" class="save-status">连接公共星球中…</span><button id="openShareTools" class="quiet-button" type="button">二维码与海报 ↗</button><button id="openInsights" class="quiet-button" type="button">星球洞察 ↗</button><button id="openOutbox" class="quiet-button" type="button">发送箱</button><button id="libraryBtn" class="quiet-button" type="button" aria-haspopup="dialog">公共词库 ↗</button></div>
+        <a class="brand" href="index.html" aria-label="心光首页">
+          <span class="brand-mark" aria-hidden="true">✳</span>
+          <span class="brand-name">心光<span class="brand-en">INNER LIGHT</span></span>
+        </a>
+        <nav class="header-actions" aria-label="星球工具">
+          <button id="libraryBtn" class="quiet-button" type="button" aria-haspopup="dialog">公共词库</button>
+          <button id="openInsights" class="quiet-button" type="button" aria-haspopup="dialog">星球洞察</button>
+          <button id="openOutbox" class="quiet-button" type="button" aria-haspopup="dialog">发送箱</button>
+          <button id="openShareTools" class="quiet-button share-button" type="button" aria-haspopup="dialog">分享星球 <span aria-hidden="true">↗</span></button>
+        </nav>
       </header>
 
       <main>
         <section class="intro" aria-labelledby="pageTitle">
-          <p class="eyebrow"><span class="live-dot" aria-hidden="true"></span> SOUL-STYLE TAG PLANET</p>
-          <h1 id="pageTitle">发现公共<span id="planetName">同频宇宙</span></h1>
-          <p class="intro-copy">滑动星球，让每一个念头相遇</p>
+          <p id="saveStatus" class="save-status" role="status">连接公共星球中…</p>
+          <h1 id="pageTitle"><span id="planetName">同频宇宙</span></h1>
+          <p class="intro-copy">把此刻的念头，送进同一片宇宙。</p>
         </section>
 
         <section class="universe" aria-label="互动文字星球">
@@ -44,11 +52,6 @@
             <div id="emptyState" class="empty-state" hidden><span aria-hidden="true">✧</span><p>宇宙安静，等待第一束光。</p></div>
           </div>
           <div class="sphere-caption"><span class="caption-rule" aria-hidden="true"></span><span id="interactionHint">滑动星球 · 遇见同频的念头</span><span class="caption-rule" aria-hidden="true"></span></div>
-          <div class="recent-strip" aria-live="polite"><span class="recent-label">刚刚抵达</span><div id="recentList" class="recent-list"><span class="recent-empty">等待新的光</span></div></div>
-          <div class="sphere-toolbar">
-            <p class="collection-stats"><strong id="wordCount">0</strong> 个念头<span class="stat-divider">/</span><strong id="totalCount">0</strong> 次真实共鸣<span class="stat-divider">/</span><strong id="todayCount">0</strong> 今日（UTC）<span class="stat-divider">/</span><strong id="activeCount">0</strong> 位活跃访客</p>
-            <button id="enrichBtn" class="enrich-button" type="button" title="从服务端重新加载公共星球">刷新星球 ↻</button>
-          </div>
         </section>
 
         <section class="composer-section" aria-label="发送一个念头">
@@ -61,8 +64,24 @@
           </form>
           <div class="composer-meta"><p id="inputHelp">按 Enter 发射 · 相同的念头，会更闪亮</p><p id="feedback" class="feedback" role="status" aria-live="polite" aria-atomic="true"></p></div>
         </section>
+        <section class="community" aria-label="星球动态">
+          <dl class="collection-stats">
+            <div><dt>公开念头</dt><dd id="wordCount">0</dd></div>
+            <div><dt>累计共鸣</dt><dd id="totalCount">0</dd></div>
+            <div><dt>今日共鸣 <span class="stats-timezone">UTC</span></dt><dd id="todayCount">0</dd></div>
+            <div><dt>活跃访客</dt><dd id="activeCount">0</dd></div>
+          </dl>
+          <div class="activity-row">
+            <div class="recent-strip" aria-live="polite"><span class="recent-label">刚刚抵达</span><div id="recentList" class="recent-list"><span class="recent-empty">等待新的光</span></div></div>
+            <button id="enrichBtn" class="enrich-button" type="button" aria-label="刷新公共星球"><span aria-hidden="true">↻</span> 刷新</button>
+          </div>
+        </section>
       </main>
-      <footer class="site-footer"><span>提交内容将公开展示。无需注册；使用匿名 Cookie 防刷，不收集姓名或手机号。</span><span class="footer-note">PUBLIC PLANET · SQLITE</span></footer>
+      <footer class="site-footer">
+        <p>念头在这里相遇，心光由你我点亮。</p>
+        <p class="footer-privacy">内容公开 · 无需注册<span>使用匿名 Cookie 防刷，不收集姓名或手机号</span></p>
+        <button id="installApp" class="quiet-button install-button" type="button" hidden>安装应用</button>
+      </footer>
     </div>
 
     <dialog id="libraryDialog" class="library-dialog ui-dialog" aria-labelledby="libraryTitle">
