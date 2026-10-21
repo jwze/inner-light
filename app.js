@@ -53,8 +53,27 @@
     arrivalEchoes.push({ element, point: { ...point }, elapsed: 0, duration: 2 });
     wake();
   }
+  function localSubmissionFor(word) {
+    return flights.find((flight) => flight.local && flight.submission?.word === word)?.submission
+      || (pendingSubmission?.word === word ? pendingSubmission : null);
+  }
+  function releaseArrival(flight) {
+    const node = flight.hiddenNode;
+    if (!node) return;
+    node.pending = Math.max(0, node.pending - 1);
+    node.element.classList.toggle('arriving', node.pending > 0);
+    flight.hiddenNode = null;
+  }
   function bindSubmittedNode(submission, node) {
-    for (const flight of flights) if (flight.submission === submission) flight.node = node;
+    for (const flight of flights) {
+      if (flight.submission !== submission) continue;
+      if (flight.node !== node) { releaseArrival(flight); flight.node = node; }
+      if (!submission.landed && flight.hiddenNode !== node) {
+        node.pending++;
+        node.element.classList.add('arriving');
+        flight.hiddenNode = node;
+      }
+    }
     if (submission.landed && submission.landedNode !== node) {
       node.pulse = 1;
       if (!reduced) createImpact(node.point);
@@ -154,19 +173,20 @@
   }
 
   function applyServerItem(item, animate = false) {
+    const ownSubmission = localSubmissionFor(item.word);
     let node = entries.get(item.word);
     if (!node) {
       if (entries.size >= C.MAX_WORDS) return;
-      const ownWord = pendingSubmission?.word === item.word && pendingSubmission.isNew;
-      const point = ownWord ? screenToSphere(pendingSubmission.screenPoint) : vacantSpherePoint();
+      const point = ownSubmission?.isNew
+        ? ownSubmission.landingPoint || screenToSphere(ownSubmission.screenPoint) : vacantSpherePoint();
       node = createNode(item, nodes.length, point);
-      if (ownWord) bindSubmittedNode(pendingSubmission, node);
-      if (animate) startFlight(node, true);
+      if (animate && !ownSubmission) startFlight(node, true);
     } else {
       node.frequency = item.frequency;
       setLabelMetrics(node, nodes.indexOf(node));
-      if (animate) startFlight(node, false);
+      if (animate && !ownSubmission) startFlight(node, false);
     }
+    if (ownSubmission?.isNew) bindSubmittedNode(ownSubmission, node);
     updatePublicStats();
     wake();
   }
@@ -182,7 +202,7 @@
       for (const node of removed) { node.element.remove(); entries.delete(node.word); }
       nodes = nodes.filter((node) => names.has(node.word));
     }
-    if (!layoutInitialized && !pendingSubmission) replaceEntries(persistedEntries);
+    if (!layoutInitialized && !pendingSubmission && !flights.some((flight) => flight.local)) replaceEntries(persistedEntries);
     else for (const item of persistedEntries) applyServerItem(item, item.word === animateWord);
     layoutInitialized = true;
     updatePublicStats(payload.stats || {});
@@ -278,7 +298,7 @@
     element.type = "button";
     element.className = "word-tag";
     element.dataset.word = item.word;
-    // The sphere is one keyboard stop; all entries remain accessible in the library.
+    // All entries remain accessible through the public library.
     element.tabIndex = -1;
     const label = document.createElement("span");
     label.className = "word-label";
@@ -318,15 +338,16 @@
   }
 
   function cancelEffects(preserveLocal = false) {
+    const retained = [];
     for (const flight of flights) {
-      if (!preserveLocal || !flight.local) { flight.element.remove(); flight.path.remove(); }
+      if (preserveLocal && flight.local) retained.push(flight);
+      else land(flight, false);
     }
-    flights = preserveLocal ? flights.filter((flight) => flight.local) : [];
+    flights = retained;
     if (!preserveLocal) { rings.forEach(removeImpact); rings = []; }
     chargeGlow = flights.length ? chargeGlow : 0;
     $("wordForm").style.setProperty("--charge", String(chargeGlow));
     if (!preserveLocal) stage.style.setProperty("--impact", "0");
-    nodes.forEach((node) => { node.pending = 0; node.element.classList.remove("arriving"); });
   }
 
   function replaceEntries(items) {
@@ -396,17 +417,17 @@
     });
     if (isNew) { node.pending++; node.element.classList.add("arriving"); }
     chargeGlow = 1;
-    flights.push({ node, local, submission, element, path, halo, core, lock, dust, elapsed: 0, duration: 1.22, isNew, bend: (Math.random() < .5 ? -1 : 1), seed: Math.random() * Math.PI * 2 });
+    flights.push({ node, hiddenNode: isNew ? node : null, local, submission, element, path, halo, core, lock, dust, elapsed: 0, duration: 1.22, isNew, bend: (Math.random() < .5 ? -1 : 1), seed: Math.random() * Math.PI * 2 });
   }
 
   function land(flight, withImpact = true) {
     const { node } = flight;
     flight.element.remove();
     flight.path.remove();
-    if (flight.isNew) node.pending = Math.max(0, node.pending - 1);
-    if (!flight.local && !node.pending) node.element.classList.remove("arriving");
+    releaseArrival(flight);
     if (flight.submission) {
       flight.submission.landed = true;
+      flight.submission.landingPoint = { ...node.point };
       flight.submission.landedNode = withImpact && entries.get(node.word) === node ? node : null;
       if (withImpact && flight.submission.approved && !flight.submission.isNew) showArrivalEcho(flight.submission, node.point);
     }
