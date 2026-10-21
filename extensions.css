@@ -1,84 +1,86 @@
-/* Public tools: isolated from the sphere and existing library UI. */
-.ext-dialog { color: var(--text, #e5edee); background: var(--bg, #111225); border: 1px solid #8bccc44d; border-radius: 20px; width: min(900px, calc(100% - 24px)); max-height: calc(100dvh - 40px); padding: clamp(18px, 4vw, 34px); overflow: auto; box-shadow: 0 24px 100px #0009; color-scheme: dark; }
-.ext-dialog::backdrop { background: #050915c9; backdrop-filter: blur(6px); }
-.ext-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 14px; }
-.ext-heading h2 { margin: 0; color: var(--mint, #8ef7ed); font-weight: 500; font-size: 22px; }
-.ext-close { width: 44px; height: 44px; flex: 0 0 auto; border: 1px solid #aacfc43d; border-radius: 50%; color: inherit; background: transparent; font-size: 28px; line-height: 1; }
-.ext-close:hover { background: #558f8a33; border-color: var(--mint, #8ef7ed); }
-.ext-description, .ext-status { font-size: 13px; line-height: 1.8; color: #b0c6c9; }
-.ext-status { min-height: 1.8em; margin-bottom: 0; overflow-wrap: anywhere; }
-.ext-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 16px 0; }
-.ext-button { border: 1px solid #9be7d94d; border-radius: 10px; padding: 10px 15px; min-height: 44px; background: #243d424d; color: #d0f7ef; font: inherit; font-size: 13px; }
-.ext-button:hover { background: #558f8a33; border-color: var(--mint, #8ef7ed); }
-.ext-dialog button:focus-visible, .ext-dialog input:focus-visible, .ext-dialog select:focus-visible, .ext-dialog summary:focus-visible { outline: 2px solid var(--mint, #8ef7ed); outline-offset: 3px; }
-.ext-dialog input, .ext-dialog select { background: #0e1723; color: #ecf7f5; border: 1px solid #9bcfc655; border-radius: 8px; padding: 10px; min-height: 44px; max-width: 100%; font: inherit; }
-.ext-dialog select { margin-left: 8px; }
+/* Public dialogs share typography and controls with ui.css. */
+.ext-dialog { width: min(920px, calc(100% - 32px)); }
+.ext-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 24px; }
+.ext-heading h2 { margin: 0; }
+.ext-close { flex: none; }
+.ext-description, .ext-status { color: var(--ui-muted, #92aaa6); font-size: 13px; line-height: 1.7; }
+.ext-status { margin: 12px 0 0; overflow-wrap: anywhere; }
+.ext-status:empty { display: none; }
+.ext-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 18px 0; }
+.ext-actions label { display: inline-flex; align-items: center; gap: 12px; color: #a9c2b9; font-size: 13px; }
+.ext-button { font: inherit; cursor: pointer; }
 .ext-url { width: 100%; }
-.ext-share-dialog { --share-image-height: clamp(96px, calc(100dvh - 380px), 300px); width: min(720px, calc(100% - 24px)); padding: 24px; background: radial-gradient(ellipse at 15% 0, #25443c66, transparent 60%), #111c27; border-color: #a4edce38; border-radius: 26px; }
-.ext-share-dialog .ext-heading { margin-bottom: 16px; }
-.ext-share-dialog .ext-heading h2 { color: #dcf9ed; font-size: 21px; letter-spacing: .06em; }
-.ext-share-dialog .ext-close { background: #b6f1dc08; border-color: #b6f1dc26; color: #bfd8d0; cursor: pointer; transition: background .18s, transform .18s; }
-.ext-share-dialog .ext-close:active { transform: scale(.92); }
-.ext-share-preview { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
-.ext-share-card { display: flex; flex-direction: column; gap: 12px; min-width: 0; margin: 0; padding: 14px; border: 1px solid #b7ecdc1c; border-radius: 20px; background: linear-gradient(150deg, #c3ffe90a, #080f1b33); }
-.ext-share-card-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; }
-.ext-share-dialog .ext-share-card-heading h3 { margin: 0; color: #c0dcd4; font-size: 13px; font-weight: 500; letter-spacing: .08em; }
-.ext-share-image { display: grid; place-items: center; height: var(--share-image-height); min-width: 0; }
-.ext-share-image canvas { display: block; flex: none; max-width: 100%; height: auto; object-fit: contain; border: 0; box-shadow: 0 8px 24px #0003; }
-.ext-share-qr canvas { width: min(100%, 220px, var(--share-image-height)); aspect-ratio: 1; border-radius: 12px; background: #fff; }
-.ext-share-poster canvas { width: min(100%, calc(var(--share-image-height) * .75)); aspect-ratio: 3 / 4; border-radius: 7px; }
-.ext-share-dialog .ext-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 10px 16px; border: 1px solid #b0e8d72e; border-radius: 999px; background: linear-gradient(180deg, #9edfc01a, #9edfc009); color: #d5eee5; font-size: 13px; font-weight: 500; line-height: 1.4; cursor: pointer; box-shadow: inset 0 1px #e1fff20a, 0 3px 8px #0002; transition: background .18s, border-color .18s, box-shadow .18s, transform .18s; }
-.ext-share-dialog .ext-button:hover:not(:disabled) { border-color: #b7f5d96b; background: #9edfc025; transform: translateY(-1px); box-shadow: inset 0 1px #e1fff214, 0 5px 14px #0003; }
-.ext-share-dialog .ext-button:active:not(:disabled) { transform: translateY(1px) scale(.98); box-shadow: inset 0 2px 5px #0002; }
-.ext-share-dialog .ext-button:disabled { cursor: wait; opacity: .45; }
-.ext-share-dialog .ext-share-download { width: 100%; }
-.ext-share-dialog .ext-share-primary { color: #153d30; border-color: #b8f6d9; background: linear-gradient(135deg, #c3f9dc, #8eddbb); box-shadow: inset 0 1px #fff6, 0 4px 16px #75d8ae16; }
-.ext-share-dialog .ext-share-primary:hover:not(:disabled) { color: #12382b; border-color: #d3ffe8; background: linear-gradient(135deg, #d7ffe8, #a7efcc); }
-.ext-share-dialog .ext-share-refresh { flex: none; width: 44px; padding: 0; font-size: 23px; color: #b2e1d0; }
-.ext-share-dialog .ext-share-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 16px 0 0; padding-top: 16px; border-top: 1px solid #b7ecdc1c; }
-.ext-share-dialog .ext-share-native { border-color: #b5f1d747; color: #bff2d8; }
+#outboxDialog.ui-dialog { width: min(640px, calc(100% - 32px)); }
+
+/* One uninterrupted sharing surface. The poster is the main visual. */
+.ext-share-dialog.ui-dialog { --share-poster-height: max(96px, min(66dvh, 640px, calc(100dvh - 210px))); width: min(900px, calc(100% - 40px)); padding: 26px 32px 24px; }
+.ext-share-dialog .ext-heading { margin-bottom: 18px; }
+.ext-share-preview { display: grid; grid-template-columns: minmax(148px, .6fr) minmax(0, 1.4fr); align-items: center; gap: clamp(24px, 5vw, 56px); }
+.ext-share-qr, .ext-share-poster { min-width: 0; margin: 0; padding: 0; border: 0; background: transparent; }
+.ext-share-qr { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.ext-share-image { display: flex; align-items: center; justify-content: center; min-width: 0; }
+.ext-share-image canvas { display: block; flex: none; max-width: 100%; height: auto; object-fit: contain; }
+.ext-share-qr canvas { width: min(100%, 180px); aspect-ratio: 1; background: #fff; border-radius: 12px; }
+.ext-share-poster .ext-share-image { height: var(--share-poster-height); }
+.ext-share-poster canvas { width: min(100%, calc(var(--share-poster-height) * .75)); aspect-ratio: 3 / 4; border-radius: 8px; box-shadow: 0 16px 45px #0005; }
+.ext-share-dialog.ui-dialog .ext-share-qr-download { min-height: 36px; padding: 6px 8px; background: transparent; border-color: transparent; box-shadow: none; color: #9dbab0; font-size: 12px; }
+.ext-share-dialog.ui-dialog .ext-share-qr-download:hover { color: #e2fff0; background: #bcebd008; }
+.ext-share-dialog.ui-dialog .ext-share-actions { display: flex; flex-wrap: nowrap; justify-content: center; gap: 10px; padding: 0; margin: 22px 0 0; border: 0; }
+.ext-share-dialog.ui-dialog .ext-share-primary { min-width: 142px; background: #bdeed4; color: #193e30; border-color: transparent; font-weight: 600; }
+.ext-share-dialog.ui-dialog .ext-share-primary:hover:not(:disabled) { background: #d7f9e6; }
+.ext-share-dialog.ui-dialog .ext-share-refresh { flex: 0 0 42px; min-width: 42px; padding: 0; font-size: 23px; }
 .ext-share-switcher { display: none; }
-.ext-share-dialog .ext-status { min-height: 0; margin: 10px 0 0; font-size: 12px; line-height: 1.5; }
-.ext-share-dialog .ext-status:empty { display: none; }
+.ext-share-dialog .ext-status { text-align: center; font-size: 12px; }
 .ext-share-dialog .ext-url { margin-top: 12px; }
-.ext-chart, .ext-network { display: block; width: 100%; height: auto; background: #0c14214d; border-radius: 12px; margin: 12px 0; }
-.ext-gridline { stroke: #9bcfc633; }
-.ext-axis { fill: #afc7ce; font: 12px sans-serif; }
+
+/* Insights and outbox: typography and spacing, without nested visual panels. */
+#insightContent > h3 { margin: 26px 0 8px; color: #d4e7de; font-size: 17px; font-weight: 550; }
+#insightContent > h4 { margin: 30px 0 14px; color: #a8c5b8; font-size: 13px; font-weight: 600; letter-spacing: .04em; }
+.ext-chart, .ext-network { display: block; width: 100%; height: auto; margin: 12px 0 20px; border-radius: 10px; background: transparent; }
+.ext-gridline { stroke: #9bcfc62b; }
+.ext-axis { fill: #9bb8b0; font: 12px -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; }
 .ext-bar { fill: var(--mint, #8ef7ed); }
 .ext-edge { stroke: #8be3df; stroke-opacity: .26; }
 .ext-network-node { fill: var(--mint, #8ef7ed); stroke: #d6fff4; stroke-width: 1; }
-.ext-network-label { fill: #e4f1f0; font: 13px sans-serif; paint-order: stroke; stroke: #111225; stroke-width: 3px; stroke-linejoin: round; }
-.ext-table-wrap { overflow-x: auto; margin: 14px 0; }
+.ext-network-label { fill: #e4f1f0; font: 13px -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; paint-order: stroke; stroke: #111c27; stroke-width: 3px; stroke-linejoin: round; }
+.ext-table-wrap { overflow-x: auto; margin: 14px 0 22px; }
 .ext-table { border-collapse: collapse; width: 100%; text-align: left; font-size: 13px; font-variant-numeric: tabular-nums; }
-.ext-table caption { text-align: left; color: #acc7c6; margin-bottom: 10px; }
-.ext-table th, .ext-table td { padding: 10px; border-bottom: 1px solid #9bcfc62e; overflow-wrap: anywhere; min-width: 66px; }
-.ext-table th { font-weight: 500; color: #caf0e9; }
-.ext-table td { color: #bdcfd3; }
-.ext-data { margin: 12px 0; border: 1px solid #9bcfc62e; border-radius: 10px; padding: 12px; }
-.ext-data summary { cursor: pointer; color: #badbd3; min-height: 24px; }
-.ext-empty { color: #a7bfc5; line-height: 1.8; padding: 22px 12px; background: #88c4be0a; border-radius: 10px; }
-.ext-dialog h3 { font-size: 17px; line-height: 1.5; font-weight: 500; overflow-wrap: anywhere; }
-.ext-dialog h4 { font-size: 15px; font-weight: 500; color: #caf0e9; margin: 26px 0 12px; }
-.ext-outbox-item { border: 1px solid #9bcfc633; border-radius: 12px; padding: 14px; margin-top: 14px; overflow-wrap: anywhere; }
-.ext-outbox-item h3 { margin: 0; }
+.ext-table caption { text-align: left; color: #94b0a5; font-size: 12px; margin-bottom: 12px; }
+.ext-table th, .ext-table td { padding: 13px 10px; border-bottom: 1px solid #9bcfc61c; overflow-wrap: anywhere; min-width: 66px; }
+.ext-table th { font-weight: 550; color: #c2dbce; }
+.ext-table td { color: #a9beb5; }
+.ext-data { margin: 0; padding: 14px 0; border: 0; border-bottom: 1px solid #9bcfc61c; }
+.ext-data summary { cursor: pointer; color: #92b3a4; font-size: 12px; min-height: 24px; }
+.ext-empty { color: #8ea99d; line-height: 1.7; padding: 28px 0; margin: 0; font-size: 14px; text-align: center; }
+.ext-outbox-item { border: 0; border-top: 1px solid #9bcfc61c; padding: 22px 0 4px; margin-top: 16px; overflow-wrap: anywhere; }
+.ext-outbox-item h3 { margin: 0 0 8px; color: #d8e9df; font-size: 17px; font-weight: 550; }
+.ext-outbox-item p { font-size: 13px; line-height: 1.7; }
+.ext-outbox-item label { color: #92afa0; font-size: 13px; }
 .ext-outbox-item input { width: 100%; margin-top: 8px; }
 .header-actions:has(#openShareTools) { flex-wrap: wrap; column-gap: 18px; row-gap: 0; }
-@media (max-width: 540px) {
-  .ext-dialog { padding: 18px; max-height: calc(100dvh - 24px); }
-  .ext-share-dialog { --share-image-height: clamp(96px, calc(100dvh - 430px), 360px); padding: 18px; border-radius: 24px; }
-  .ext-share-dialog .ext-heading { margin-bottom: 12px; }
-  .ext-share-dialog .ext-heading h2 { font-size: 19px; }
-  .ext-share-switcher { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding: 4px; margin-bottom: 12px; border: 1px solid #b7ecdc1c; border-radius: 999px; background: #060d1766; }
-  .ext-share-dialog .ext-share-choice { border-color: transparent; background: transparent; color: #8faeaa; box-shadow: none; }
-  .ext-share-dialog .ext-share-choice[aria-pressed="true"] { color: #ddfaed; background: #addfca1f; border-color: #b7ecdc26; box-shadow: 0 2px 8px #0002; }
-  .ext-share-preview { grid-template-columns: minmax(0, 1fr); }
+
+@media (max-width: 600px) {
+  .ext-dialog { width: calc(100% - 24px); }
+  .ext-share-dialog.ui-dialog { --share-poster-height: max(96px, min(65dvh, 720px, calc(100dvh - 270px))); width: calc(100% - 24px); padding: 20px 20px 18px; }
+  .ext-share-dialog .ext-heading { margin-bottom: 14px; }
+  .ext-share-switcher { display: flex; justify-content: center; gap: 24px; padding: 0; margin-bottom: 16px; }
+  .ext-share-dialog.ui-dialog .ext-share-choice { min-height: 32px; padding: 5px 2px 8px; border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: transparent; box-shadow: none; color: #76958a; font-size: 13px; }
+  .ext-share-dialog.ui-dialog .ext-share-choice[aria-pressed="true"] { border-bottom-color: #bdeed4; color: #d6f2e2; }
+  .ext-share-preview { grid-template-columns: minmax(0, 1fr); gap: 0; }
   .ext-share-dialog[data-preview="qr"] .ext-share-poster, .ext-share-dialog[data-preview="poster"] .ext-share-qr { display: none; }
-  .ext-share-card { padding: 12px; }
-  .ext-share-dialog .ext-share-actions { gap: 10px; margin-top: 12px; padding-top: 12px; }
-  .ext-actions .ext-button { flex-grow: 1; }
+  .ext-share-poster .ext-share-image { height: auto; }
+  .ext-share-qr { justify-content: center; min-height: var(--share-poster-height); }
+  .ext-share-qr canvas { width: min(70vw, 260px, calc(var(--share-poster-height) - 64px)); }
+  .ext-share-dialog.ui-dialog .ext-share-actions { gap: 7px; margin-top: 18px; }
+  .ext-share-dialog.ui-dialog .ext-share-actions > button { padding-inline: 12px; font-size: 12px; }
+  .ext-share-dialog.ui-dialog .ext-share-actions .ext-share-primary { min-width: 0; flex: 1; }
+  .ext-share-dialog[data-preview="qr"] .ext-share-primary { display: none; }
+  .ext-actions { gap: 8px; }
+  .ext-actions label { width: 100%; justify-content: space-between; }
+  #insightContent > h3 { font-size: 16px; }
+  .ext-table th, .ext-table td { padding: 12px 8px; }
 }
-@media (prefers-reduced-motion: reduce) {
-  .ext-dialog::backdrop { backdrop-filter: none; }
-  .ext-share-dialog .ext-button, .ext-share-dialog .ext-close { transition: none; }
-  .ext-share-dialog .ext-button:hover:not(:disabled), .ext-share-dialog .ext-button:active:not(:disabled), .ext-share-dialog .ext-close:active { transform: none; }
+@media (max-width: 360px) {
+  .ext-share-dialog.ui-dialog { padding-inline: 16px; }
+  .ext-share-dialog.ui-dialog .ext-share-actions > button { padding-inline: 9px; font-size: 11px; }
 }

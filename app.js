@@ -724,17 +724,6 @@
       const count = document.createElement("span");
       count.className = "library-frequency";
       count.textContent = `${node.frequency} 次`;
-      const remove = document.createElement("button");
-      remove.type = "button";
-      remove.className = "delete-word";
-      remove.textContent = "仅管理员可移除";
-      remove.disabled = true;
-      remove.title = "公共词语由管理员审核和移除";
-      remove.setAttribute("aria-label", `${node.word} 仅管理员可移除`);
-      remove.addEventListener("click", () => {
-        selectedWord = node.word;
-        askConfirm("delete", `将「${node.word}」移出星球？它的共鸣次数也会被移除。`);
-      });
       const reuse = document.createElement("button");
       reuse.type = "button";
       reuse.className = "reuse-word";
@@ -745,7 +734,7 @@
         input.value = node.word;
         updateInputCount();
       });
-      row.append(word, count, reuse, remove);
+      row.append(word, count, reuse);
       fragment.append(row);
     }
     if (!filtered.length) {
@@ -756,7 +745,6 @@
     }
     $("libraryList").replaceChildren(fragment);
     $("librarySummary").textContent = `共 ${entries.size} / ${C.MAX_WORDS} 个念头${search ? ` · 找到 ${filtered.length} 个` : ""}`;
-    $("clearBtn").disabled = entries.size === 0;
   }
 
   function askConfirm(action, text) {

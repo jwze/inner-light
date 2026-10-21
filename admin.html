@@ -7,9 +7,11 @@
   <title>心光 · 管理台</title>
   <link rel="icon" href="/icon.svg">
   <link rel="stylesheet" href="/admin.css">
+  <link rel="stylesheet" href="/ui.css">
+  <script src="/ui.js" defer></script>
   <script src="/admin.js" defer></script>
 </head>
-<body>
+<body class="admin-ui">
   <div id="message" class="toast" role="status" aria-live="polite" hidden></div>
   <main id="authScreen" class="auth-screen">
     <div class="auth-story">
@@ -64,7 +66,7 @@
             <article class="stat-card"><div class="stat-label">待审核 <span class="stat-icon amber">◷</span></div><strong id="statPending">—</strong><button class="text-button" data-goto="reviews">前往处理 →</button></article>
           </div>
           <div class="overview-grid">
-            <article class="card"><div class="card-heading"><div><h2>共鸣趋势</h2><p class="muted small">最近 7 天的已通过提交 · UTC</p></div><span class="tag neutral">近 7 天</span></div><div id="trend" class="trend" role="img" aria-label="最近七天共鸣趋势"></div><div class="chart-legend"><span class="legend-dot"></span>每日共鸣<span id="weeklyTotal" class="muted"></span></div></article>
+            <article class="card"><div class="card-heading"><div><h2>共鸣趋势</h2><p class="muted small">最近 7 天的已通过提交 · UTC</p></div><span class="tag neutral">近 7 天</span></div><div id="trend" class="trend" data-image-preview data-preview-title="共鸣趋势" role="img" aria-label="最近七天共鸣趋势"></div><div class="chart-legend"><span class="legend-dot"></span>每日共鸣<span id="weeklyTotal" class="muted"></span></div></article>
             <article class="card"><div class="card-heading"><div><h2>星球一览</h2><p class="muted small" id="overviewPlanetSlug"></p></div><span id="reviewModeTag" class="tag"></span></div><h3 id="overviewPlanetName" class="planet-name"></h3><p id="overviewDescription" class="muted planet-description"></p><dl class="detail-list"><div><dt>累计访客</dt><dd id="statVisitors">—</dd></div><div><dt>最近 15 分钟活跃访客</dt><dd id="statActive">—</dd></div><div><dt>已屏蔽词语</dt><dd id="statHidden">—</dd></div></dl><button class="secondary full-width" data-goto="planets">管理星球设置 →</button></article>
           </div>
           <div class="overview-grid">
@@ -119,8 +121,33 @@
     </div>
   </div>
 
-  <dialog id="wordDialog"><form id="wordForm"><div class="dialog-heading"><h2 id="wordDialogTitle">新增词语</h2><button class="icon-button" type="button" data-close="wordDialog" aria-label="关闭">×</button></div><p class="muted small">编辑词库展示频率，不改变真实提交历史。已屏蔽的词语会保留屏蔽状态。</p><label>词语<input id="editWord" required maxlength="80" placeholder="输入词语"></label><label>共鸣数<input id="editFrequency" type="number" min="1" step="1" required value="1"></label><div class="dialog-actions"><button class="secondary" type="button" data-close="wordDialog">取消</button><button class="primary" type="submit">保存词语</button></div></form></dialog>
-  <dialog id="planetDialog"><form id="planetForm"><div class="dialog-heading"><h2>创建一颗新星球</h2><button class="icon-button" type="button" data-close="planetDialog" aria-label="关闭">×</button></div><label>星球地址<input id="planetSlug" pattern="[a-z0-9][a-z0-9-]{0,48}" maxlength="49" required placeholder="例如 reading-club"><span class="field-hint">小写英文、数字和连字符，创建后不可更改。</span></label><label>星球名称<input id="planetName" maxlength="50" required placeholder="给星球起个名字"></label><label>星球介绍<textarea id="planetDescription" rows="2" maxlength="200"></textarea></label><label>主题<select id="planetTheme"><option value="nebula">星云</option><option value="ocean">海洋</option><option value="forest">森林</option></select></label><label class="check-label"><input id="planetSeed" type="checkbox" checked>使用示例词语填充新星球</label><label class="check-label"><input id="planetReview" type="checkbox">开启所有提交预审</label><div class="dialog-actions"><button class="secondary" type="button" data-close="planetDialog">取消</button><button class="primary" type="submit">创建星球</button></div></form></dialog>
-  <dialog id="passwordDialog"><form id="passwordForm"><div class="dialog-heading"><h2>重置账户密码</h2><button class="icon-button" type="button" data-close="passwordDialog" aria-label="关闭">×</button></div><p id="passwordUser" class="muted"></p><label>新密码<input id="resetPassword" type="password" autocomplete="new-password" minlength="12" maxlength="128" required></label><p class="muted small">保存后，该账户所有已登录会话都会失效。</p><div class="dialog-actions"><button class="secondary" type="button" data-close="passwordDialog">取消</button><button class="primary" type="submit">更新密码</button></div></form></dialog>
+  <dialog id="wordDialog" class="ui-dialog admin-editor" aria-labelledby="wordDialogTitle">
+    <form id="wordForm">
+      <div class="dialog-heading"><h2 id="wordDialogTitle">新增词语</h2><button class="icon-button" type="button" data-close="wordDialog" aria-label="关闭词语编辑">×</button></div>
+      <div class="admin-dialog-grid"><label>词语<input id="editWord" required maxlength="80" placeholder="输入词语"></label><label>共鸣数<input id="editFrequency" type="number" min="1" max="9999" step="1" required value="1"></label></div>
+      <div class="dialog-actions"><button class="secondary" type="button" data-close="wordDialog">取消</button><button class="primary" type="submit">保存词语</button></div>
+    </form>
+  </dialog>
+  <dialog id="planetDialog" class="ui-dialog admin-editor" aria-labelledby="planetDialogTitle">
+    <form id="planetForm">
+      <div class="dialog-heading"><h2 id="planetDialogTitle">创建星球</h2><button class="icon-button" type="button" data-close="planetDialog" aria-label="关闭星球创建">×</button></div>
+      <div class="admin-dialog-grid">
+        <label class="span-two">星球地址<input id="planetSlug" pattern="[a-z0-9][a-z0-9-]{0,48}" maxlength="49" required placeholder="小写英文、数字、连字符"></label>
+        <label>星球名称<input id="planetName" maxlength="50" required placeholder="给星球起个名字"></label>
+        <label>视觉主题<select id="planetTheme"><option value="nebula">星云</option><option value="ocean">海洋</option><option value="forest">森林</option></select></label>
+        <label class="span-two">星球介绍<textarea id="planetDescription" rows="2" maxlength="200" placeholder="介绍这颗星球"></textarea></label>
+      </div>
+      <div class="admin-dialog-options"><label class="check-label"><input id="planetSeed" type="checkbox" checked>加入示例词语</label><label class="check-label"><input id="planetReview" type="checkbox">开启提交预审</label></div>
+      <div class="dialog-actions"><button class="secondary" type="button" data-close="planetDialog">取消</button><button class="primary" type="submit">创建星球</button></div>
+    </form>
+  </dialog>
+  <dialog id="passwordDialog" class="ui-dialog admin-editor" aria-labelledby="passwordDialogTitle">
+    <form id="passwordForm">
+      <div class="dialog-heading"><h2 id="passwordDialogTitle">重置密码</h2><button class="icon-button" type="button" data-close="passwordDialog" aria-label="关闭密码重置">×</button></div>
+      <p id="passwordUser" class="admin-dialog-account"></p>
+      <label>新密码<input id="resetPassword" type="password" autocomplete="new-password" minlength="12" maxlength="128" required placeholder="12–128 位新密码"></label>
+      <div class="dialog-actions"><button class="secondary" type="button" data-close="passwordDialog">取消</button><button class="primary" type="submit">更新密码</button></div>
+    </form>
+  </dialog>
 </body>
 </html>

@@ -4,7 +4,7 @@ importScripts('/vendor/version.js');
 importScripts('/offline.js');
 const CACHE_PREFIX = 'inner-light-public-';
 const CACHE = `${CACHE_PREFIX}${self.INNER_LIGHT_ASSET_VERSION}`;
-const ASSETS = ['/', '/index.html', '/style.css', '/core.js', '/effects.js', '/app.js', '/extensions.js', '/extensions.css', '/offline.js', '/vendor/version.js', '/vendor/qrcode.js', '/manifest.webmanifest', '/icon.svg', '/vendor/icon-192.png', '/vendor/icon-512.png'];
+const ASSETS = ['/', '/index.html', '/style.css', '/core.js', '/effects.js', '/app.js', '/ui.js', '/ui.css', '/extensions.js', '/extensions.css', '/offline.js', '/vendor/version.js', '/vendor/qrcode.js', '/manifest.webmanifest', '/icon.svg', '/vendor/icon-192.png', '/vendor/icon-512.png'];
 const STATIC = new Set(ASSETS.filter(path => !['/', '/index.html'].includes(path)));
 self.addEventListener('install', event => {
   event.waitUntil((async () => {

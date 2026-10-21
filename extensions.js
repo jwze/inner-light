@@ -40,11 +40,12 @@
   }
   function status(text = '') { const el = node('p', text, 'ext-status'); el.setAttribute('role', 'status'); el.setAttribute('aria-live', 'polite'); return el; }
   function dialog(id, title) {
-    const el = node('dialog', undefined, 'ext-dialog'); el.id = id; el.setAttribute('aria-labelledby', `${id}Title`);
+    const el = node('dialog', undefined, 'ext-dialog ui-dialog'); el.id = id; el.setAttribute('aria-labelledby', `${id}Title`);
     const heading = node('div', undefined, 'ext-heading');
     const name = node('h2', title); name.id = `${id}Title`;
     const close = button('×', () => el.close(), 'ext-close'); close.setAttribute('aria-label', `关闭${title}`); close.autofocus = true;
     heading.append(name, close); el.append(heading);
+    window.InnerLightUI?.decorateDialog(el);
     el.addEventListener('click', event => { if (event.target === el) { const rect = el.getBoundingClientRect(); if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) el.close(); } });
     document.body.append(el); return el;
   }
@@ -148,23 +149,21 @@
     if (!shareDialog) {
       shareDialog = dialog('shareToolsDialog', '分享星球');
       shareDialog.classList.add('ext-share-dialog');
-      shareDialog.dataset.preview = 'qr';
+      shareDialog.dataset.preview = 'poster';
       const preview = node('div', undefined, 'ext-share-preview');
       const switcher = node('div', undefined, 'ext-share-switcher');
       switcher.setAttribute('role', 'group'); switcher.setAttribute('aria-label', '选择分享预览');
-      const qrCard = node('section', undefined, 'ext-share-card ext-share-qr'); qrCard.id = 'shareQRPanel';
-      const posterCard = node('section', undefined, 'ext-share-card ext-share-poster'); posterCard.id = 'sharePosterPanel';
-      const qrHeader = node('div', undefined, 'ext-share-card-heading'); qrHeader.append(node('h3', '二维码'));
-      const posterHeader = node('div', undefined, 'ext-share-card-heading'); posterHeader.append(node('h3', '星球海报'));
+      const qrPanel = node('section', undefined, 'ext-share-qr'); qrPanel.id = 'shareQRPanel'; qrPanel.setAttribute('aria-label', '星球二维码');
+      const posterPanel = node('section', undefined, 'ext-share-poster'); posterPanel.id = 'sharePosterPanel'; posterPanel.setAttribute('aria-label', '星球海报');
       const qrFrame = node('div', undefined, 'ext-share-image'), posterFrame = node('div', undefined, 'ext-share-image');
-      shareQR = node('canvas'); shareQR.setAttribute('role', 'img'); shareQR.setAttribute('aria-label', '当前星球链接二维码');
-      poster = node('canvas'); poster.setAttribute('role', 'img'); poster.setAttribute('aria-label', '当前旋转词球、星球统计与二维码的海报');
+      shareQR = node('canvas'); shareQR.setAttribute('role', 'img'); shareQR.setAttribute('aria-label', '星球二维码');
+      poster = node('canvas'); poster.setAttribute('role', 'img'); poster.setAttribute('aria-label', '星球海报');
       qrFrame.append(shareQR); posterFrame.append(poster);
-      const message = status(), fallback = node('input'); fallback.type = 'url'; fallback.readOnly = true; fallback.hidden = true; fallback.className = 'ext-url'; fallback.setAttribute('aria-label', '星球链接，可手动复制');
+      const message = status(), fallback = node('input'); fallback.type = 'url'; fallback.readOnly = true; fallback.hidden = true; fallback.className = 'ext-url'; fallback.setAttribute('aria-label', '星球链接');
       const downloadStatus = { set textContent(value) { message.textContent = value.startsWith('图片已生成') ? '图片已生成' : value; } };
       const actions = node('div', undefined, 'ext-actions ext-share-actions');
-      const qrDownload = button('下载二维码', () => download(shareQR, 'inner-light-qr.png', downloadStatus), 'ext-button ext-share-download');
-      const posterDownload = button('保存海报', () => download(poster, 'inner-light-poster.png', downloadStatus), 'ext-button ext-share-download ext-share-primary');
+      const qrDownload = button('下载二维码 ↓', () => download(shareQR, 'inner-light-qr.png', downloadStatus), 'ext-button ext-share-qr-download');
+      const posterDownload = button('保存海报 ↓', () => download(poster, 'inner-light-poster.png', downloadStatus), 'ext-button ext-share-primary');
       const generate = async () => {
         const current = state(), snapshot = captureSphere(current.sphereElement);
         shareDialog.dataset.url = current.url;
@@ -173,30 +172,30 @@
         try {
           if (document.fonts?.ready) await document.fonts.ready;
           await qr(shareQR, current.url);
-          // qrcode writes fixed inline dimensions; let the square preview respond to the dialog.
+          // qrcode writes fixed inline dimensions; preview sizing belongs to the responsive UI.
           shareQR.style.width = ''; shareQR.style.height = '';
           drawPoster(poster, current, snapshot, shareQR);
+          window.InnerLightUI?.enhanceImage(shareQR, { title: '星球二维码' });
+          window.InnerLightUI?.enhanceImage(poster, { title: '星球海报' });
           message.textContent = ''; qrDownload.disabled = posterDownload.disabled = false;
         } catch (error) { message.textContent = error.message || '生成失败，请重试'; }
         finally { refresh.disabled = false; preview.removeAttribute('aria-busy'); }
       };
-      const refresh = button('↻', generate, 'ext-button ext-share-refresh'); refresh.setAttribute('aria-label', '更新星球快照'); refresh.title = '更新星球快照';
-      posterHeader.append(refresh);
-      qrCard.append(qrHeader, qrFrame, qrDownload); posterCard.append(posterHeader, posterFrame, posterDownload); preview.append(qrCard, posterCard);
-      const choices = [['qr', '二维码', qrCard], ['poster', '海报', posterCard]];
-      choices.forEach(([key, label, panel]) => {
+      const refresh = button('↻', generate, 'ext-button ext-share-refresh'); refresh.setAttribute('aria-label', '更新星球快照');
+      qrPanel.append(qrFrame, qrDownload); posterPanel.append(posterFrame); preview.append(qrPanel, posterPanel);
+      [['poster', '海报', posterPanel], ['qr', '二维码', qrPanel]].forEach(([key, label, panel]) => {
         const control = button(label, () => {
           shareDialog.dataset.preview = key;
           Array.from(switcher.children).forEach(item => item.setAttribute('aria-pressed', String(item === control)));
         }, 'ext-button ext-share-choice');
-        control.setAttribute('aria-controls', panel.id); control.setAttribute('aria-pressed', String(key === 'qr')); switcher.append(control);
+        control.setAttribute('aria-controls', panel.id); control.setAttribute('aria-pressed', String(key === 'poster')); switcher.append(control);
       });
-      actions.append(button('复制链接', () => copyURL(shareDialog.dataset.url || state().url, message, fallback)), button('系统分享 ↗', async () => {
+      actions.append(posterDownload, button('复制链接', () => copyURL(shareDialog.dataset.url || state().url, message, fallback)), button('分享 ↗', async () => {
         const url = shareDialog.dataset.url || state().url;
         if (!navigator.share) { await copyURL(url, message, fallback); return; }
         try { await navigator.share({ title: state().name, text: '来我的心光星球，遇见同频的念头。', url }); message.textContent = '分享已打开'; }
         catch (error) { if (error.name !== 'AbortError') await copyURL(url, message, fallback); }
-      }, 'ext-button ext-share-native'));
+      }, 'ext-button ext-share-native'), refresh);
       shareDialog.append(switcher, preview, actions, fallback, message); shareDialog.generate = generate;
     }
     show(shareDialog); void shareDialog.generate();
@@ -211,10 +210,10 @@
     el.append(head, body); wrapper.append(el); return wrapper;
   }
   function fallbackTable(caption, headers, rows) {
-    const details = node('details', undefined, 'ext-data'); details.append(node('summary', '查看可访问数据表'), table(caption, headers, rows)); return details;
+    const details = node('details', undefined, 'ext-data'); details.append(node('summary', '查看数据'), table(caption, headers, rows)); return details;
   }
   function dailyChart(items) {
-    const chart = svg('svg', { viewBox: '0 0 720 240', role: 'img', 'aria-label': '每日共鸣次数趋势图；完整数据见下方表格', class: 'ext-chart' });
+    const chart = svg('svg', { viewBox: '0 0 720 240', role: 'img', 'aria-label': '每日共鸣次数趋势图；完整数据见下方表格', 'data-preview-title': '共鸣趋势', class: 'ext-chart' });
     chart.append(svg('title', {}, '每日共鸣次数（UTC）'));
     const max = Math.max(1, ...items.map(item => number(item.count))), w = 640 / items.length;
     [0, .5, 1].forEach(fraction => {
@@ -230,7 +229,7 @@
     return chart;
   }
   function relationNetwork(nodes, edges) {
-    const chart = svg('svg', { viewBox: '0 0 720 540', role: 'img', 'aria-label': '词语关联网络；线条粗细代表关联强度，完整数据见下方表格', class: 'ext-network' });
+    const chart = svg('svg', { viewBox: '0 0 720 540', role: 'img', 'aria-label': '词语关联网络；线条粗细代表关联强度，完整数据见下方表格', 'data-preview-title': '词语共现', class: 'ext-network' });
     chart.append(svg('title', {}, '词语关联网络'));
     const positions = new Map();
     nodes.forEach((item, i) => {
@@ -291,7 +290,7 @@
         })));
         else content.append(node('p', '还没有热门词语。', 'ext-empty'));
       } else content.append(node('p', `趋势暂不可用：${analytics.reason.name === 'AbortError' ? '请求超时或已取消' : analytics.reason.message}`, 'ext-empty'));
-      content.append(node('h4', '词语关联'), node('p', '关联仅表示词语共同出现的统计联系，不代表个人关系。网络展示最多 24 个词；数据表保留完整响应。', 'ext-description'));
+      content.append(node('h4', '词语共现'));
       if (relations.status === 'fulfilled') {
         const nodes = Array.isArray(relations.value.nodes) ? relations.value.nodes : [], edges = Array.isArray(relations.value.edges) ? relations.value.edges : [];
         if (nodes.length) {
@@ -307,7 +306,6 @@
   function openOutbox() {
     if (!outboxDialog) {
       outboxDialog = dialog('outboxDialog', '离线发送箱');
-      outboxDialog.append(node('p', '发送前会先保存到此设备。恢复网络后自动发送；待审核也视为已送达，不会重复发送。网络不确定时保留同一请求编号。仅被拒绝的条目可编辑、重试或删除；编辑或重试会创建新的请求编号。清理浏览器数据会删除待发内容。', 'ext-description'));
       const message = status(), list = node('div'); list.id = 'outboxEntries';
       outboxDialog.append(button('立即尝试发送', async event => {
         event.currentTarget.disabled = true; message.textContent = '正在尝试发送，限流条目仍会遵守等待时间…';
@@ -332,7 +330,7 @@
       // Keep a focused edit field intact when another tab emits an update.
       if (list.contains(document.activeElement) && document.activeElement.tagName === 'INPUT') return;
       list.replaceChildren();
-      if (!entries.length) { list.append(node('p', '发送箱是空的。所有已送达内容会自动移除。', 'ext-empty')); return; }
+      if (!entries.length) { list.append(node('p', '暂无待发送内容', 'ext-empty')); return; }
       for (const entry of entries) {
         const item = node('section', undefined, 'ext-outbox-item');
         item.append(node('h3', entry.word), node('p', `星球：${entry.slug} · ${entry.state === 'blocked' ? '需要处理' : '等待发送'}`, 'ext-description'));

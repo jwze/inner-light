@@ -12,7 +12,7 @@ if (fs.existsSync(path.join(__dirname, '.env'))) process.loadEnvFile(path.join(_
 const PORT = Number(process.env.PORT || 3000), HOST = process.env.HOST || '0.0.0.0';
 const MINUTE_LIMIT = Number(process.env.MAX_SUBMISSIONS_PER_MINUTE || 20), HOUR_LIMIT = Number(process.env.MAX_SUBMISSIONS_PER_HOUR || 200);
 const BLOCKED = new Set((process.env.MODERATION_WORDS || '').split(',').map((word) => Core.normalizeWord(word).toLowerCase()).filter(Boolean));
-const PUBLIC_FILES = new Set(['index.html','style.css','app.js','core.js','effects.js','admin.html','admin.css','admin.js','offline.js','extensions.js','extensions.css','sw.js','manifest.webmanifest','icon.svg','vendor/version.js','vendor/qrcode.js','vendor/icon-192.png','vendor/icon-512.png']);
+const PUBLIC_FILES = new Set(['index.html','style.css','app.js','core.js','effects.js','admin.html','admin.css','admin.js','ui.js','ui.css','offline.js','extensions.js','extensions.css','sw.js','manifest.webmanifest','icon.svg','vendor/version.js','vendor/qrcode.js','vendor/icon-192.png','vendor/icon-512.png']);
 const database = openDatabase(path.resolve(process.env.DATA_DIR || path.join(__dirname, 'data')));
 const auth = openAuth(database.filename, process.env.ADMIN_TOKEN || '');
 database.ensure('default');

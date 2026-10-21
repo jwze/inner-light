@@ -3,6 +3,7 @@
   const $ = (id) => document.getElementById(id);
   const all = (selector) => [...document.querySelectorAll(selector)];
   const roles = { owner: '所有者', moderator: '审核员', viewer: '观察员' };
+  const ask = (title, message, confirmText, danger = true) => window.InnerLightUI.confirm({ title, message, confirmText, danger });
   const statuses = { approved: ['已通过', 'success'], pending: ['待审核', 'warning'], rejected: ['已驳回', 'rejected'] };
   const actions = { hide: '屏蔽词语', restore: '恢复词语', clear: '屏蔽全部', settings: '更新设置', approved: '审核通过', rejected: '审核驳回', 'import:merge': '合并导入', 'import:replace': '替换恢复', 'word:upsert': '编辑词库', 'planet:create': '创建星球' };
   const pages = {
@@ -58,7 +59,11 @@
     const disabled = control?.disabled;
     if (control) { control.dataset.busy = 'true'; control.disabled = true; }
     try { await fn(event); } catch (error) { message(error.name === 'TimeoutError' ? '请求超时，请刷新后确认操作结果。' : error.message, true); }
-    finally { if (control) { delete control.dataset.busy; control.disabled = disabled; } syncSelection(); }
+    finally {
+      if (control) { delete control.dataset.busy; control.disabled = disabled; }
+      syncSelection();
+      if (control?.isConnected && !control.disabled && document.activeElement === document.body) control.focus({ preventScroll: true });
+    }
   };
   const button = (text, fn, className = 'text-button', disabled = false) => { const node = el('button', text, className); node.type = 'button'; node.disabled = disabled; node.onclick = action(fn); return node; };
   function navigate(target, scroll = true) {
@@ -176,7 +181,7 @@
       role.onchange = () => { if (role.value === 'owner') scope.value = '*'; };
       cell(row).append(role); cell(row).append(scope); cell(row).append(el('span', u.disabled ? '已禁用' : '正常', `tag ${u.disabled ? 'rejected' : 'success'}`));
       const update = async (value, text) => { await post(`/api/admin/users/${u.id}`, value, false); if (u.id === user.id && !user.bootstrap) { signedOut(); message('当前账户已更新，请重新登录。'); return; } await renderUsers(); message(text); };
-      cell(row, undefined, 'controls').append(button('保存权限', () => update({ role: role.value, planets: scope.value.split(',').map(s => s.trim()).filter(Boolean) }, '权限已更新，旧会话已失效。')), button('重置密码', () => { passwordTarget = u; $('passwordUser').textContent = `正在为 ${u.name} 设置新密码。`; $('resetPassword').value = ''; $('passwordDialog').showModal(); }), button(u.disabled ? '启用' : '禁用', async () => { if (!u.disabled && !confirm(`禁用账户 ${u.name}？该账户将立即退出登录。`)) return; await update({ disabled: !u.disabled }, u.disabled ? '账户已启用。' : '账户已禁用。'); }, 'text-button danger'));
+      cell(row, undefined, 'controls').append(button('保存权限', () => update({ role: role.value, planets: scope.value.split(',').map(s => s.trim()).filter(Boolean) }, '权限已更新，旧会话已失效。')), button('重置密码', () => { passwordTarget = u; $('passwordUser').textContent = u.name; $('resetPassword').value = ''; $('passwordDialog').showModal(); }), button(u.disabled ? '启用' : '禁用', async () => { if (!u.disabled && !(await ask('禁用账户', `${u.name} 将退出登录，直到重新启用。`, '禁用账户'))) return; await update({ disabled: !u.disabled }, u.disabled ? '账户已启用。' : '账户已禁用。'); }, 'text-button danger'));
       return row;
     }));
     if (!result.items.length) emptyTable('users', 5, '还没有正式管理员，请先创建一个所有者账户。');
@@ -213,13 +218,13 @@
   async function batchWords(actionName) {
     if (!selectedWords.size) return;
     const count = selectedWords.size;
-    if (actionName === 'hide' && !confirm(`屏蔽选中的 ${count} 个词语？屏蔽后可恢复。`)) return;
+    if (actionName === 'hide' && !(await ask('屏蔽所选词语', `选中的 ${count} 个词语将从公开星球隐藏，可随时恢复。`, '屏蔽词语'))) return;
     await post('/api/admin/words/batch', { words: [...selectedWords], action: actionName }); await load(); message(`已${actionName === 'hide' ? '屏蔽' : '恢复'} ${count} 个词语。`);
   }
   async function batchReviews(decision) {
     if (!selectedReviews.size) return;
     const count = selectedReviews.size;
-    if (!confirm(`${decision === 'approved' ? '通过' : '驳回'}选中的 ${count} 条提交？审核结果不可重复修改。`)) return;
+    if (!(await ask(decision === 'approved' ? '通过提交' : '驳回提交', `已选 ${count} 条提交，处理后不可重复审核。`, decision === 'approved' ? '通过所选' : '驳回所选', decision !== 'approved'))) return;
     await post('/api/admin/reviews/batch', { ids: [...selectedReviews], decision }); await load(); message(`已处理 ${count} 条提交。`);
   }
   function download(blob, name) { const anchor = el('a'), url = URL.createObjectURL(blob); anchor.href = url; anchor.download = name; document.body.append(anchor); anchor.click(); anchor.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
@@ -237,7 +242,7 @@
   $('selectReviews').onchange = () => { visibleReviews.filter(r => r.status === 'pending').forEach(r => { if ($('selectReviews').checked) selectedReviews.add(r.id); else selectedReviews.delete(r.id); }); renderReviews(); };
   $('hideSelected').onclick = action(() => batchWords('hide')); $('restoreSelected').onclick = action(() => batchWords('restore'));
   $('approveSelected').onclick = action(() => batchReviews('approved')); $('rejectSelected').onclick = action(() => batchReviews('rejected'));
-  $('clear').onclick = action(async () => { if (!confirm(`屏蔽「${current.planet.name}」的全部词语？词频与历史保留，可在已屏蔽列表恢复。`)) return; await post('/api/admin/clear', {}); await load(); message('全部词语已屏蔽。'); });
+  $('clear').onclick = action(async () => { if (!(await ask('屏蔽全部词语', `「${current.planet.name}」的全部词语将被隐藏，词频与历史保留。`, '屏蔽全部'))) return; await post('/api/admin/clear', {}); await load(); message('全部词语已屏蔽。'); });
   $('addWord').onclick = () => openWord();
   $('editFrequency').max = 9999;
   $('wordForm').onsubmit = action(async () => { await post('/api/admin/words', { word: $('editWord').value, frequency: Number($('editFrequency').value) }); $('wordDialog').close(); await load(); message('词库已保存。'); });
@@ -249,7 +254,7 @@
   $('export').onclick = action(async () => { const value = await data('/api/admin/export'); download(new Blob([JSON.stringify(value, null, 2)], { type: 'application/json' }), `inner-light-${activeSlug}.json`); message('完整备份已下载。'); });
   $('exportCSV').onclick = action(async () => { const response = await request('/api/admin/export.csv'); download(await response.blob(), `inner-light-${activeSlug}.csv`); });
   $('importMode').onchange = () => { const replace = $('importMode').value === 'replace'; $('importConfirmLabel').hidden = !replace; $('importConfirm').required = replace; $('importExplanation').textContent = replace ? '替换将清除当前词库和提交历史，再恢复文件中的数据；管理员账户和管理审计链保留。请先下载备份。' : '合并时词频取较大值，历史记录去重，不重复累加。'; };
-  $('importForm').onsubmit = action(async () => { const file = $('importFile').files[0]; if (!file) throw Error('请先选择文件。'); if (file.size > 5 * 1024 * 1024) throw Error('文件不能超过 5 MB。'); if (!/\.(json|csv)$/i.test(file.name)) throw Error('请选择 JSON 或 CSV 文件。'); if ($('importMode').value === 'replace' && $('importConfirm').value !== activeSlug) throw Error('请输入当前星球地址确认替换。'); if ($('importMode').value === 'replace' && !confirm(`确认使用备份替换「${current.planet.name}」的数据？`)) return; const text = await file.text(), format = file.name.toLowerCase().endsWith('.csv') ? 'csv' : 'json'; let payload; try { payload = format === 'json' ? { data: JSON.parse(text) } : { content: text }; } catch (_) { throw Error('JSON 文件格式不正确。'); } await post('/api/admin/import', { format, mode: $('importMode').value, confirm: $('importConfirm').value, ...payload }); await load(); $('importFile').value = ''; $('importConfirm').value = ''; message('导入完成，星球数据已更新。'); });
+  $('importForm').onsubmit = action(async () => { const file = $('importFile').files[0]; if (!file) throw Error('请先选择文件。'); if (file.size > 5 * 1024 * 1024) throw Error('文件不能超过 5 MB。'); if (!/\.(json|csv)$/i.test(file.name)) throw Error('请选择 JSON 或 CSV 文件。'); if ($('importMode').value === 'replace' && $('importConfirm').value !== activeSlug) throw Error('请输入当前星球地址确认替换。'); if ($('importMode').value === 'replace' && !(await ask('替换星球数据', `「${current.planet.name}」的词库和提交历史将被备份内容替换。`, '替换数据'))) return; const text = await file.text(), format = file.name.toLowerCase().endsWith('.csv') ? 'csv' : 'json'; let payload; try { payload = format === 'json' ? { data: JSON.parse(text) } : { content: text }; } catch (_) { throw Error('JSON 文件格式不正确。'); } await post('/api/admin/import', { format, mode: $('importMode').value, confirm: $('importConfirm').value, ...payload }); await load(); $('importFile').value = ''; $('importConfirm').value = ''; message('导入完成，星球数据已更新。'); });
   $('newRole').onchange = () => { if ($('newRole').value === 'owner') $('newPlanets').value = '*'; else if ($('newPlanets').value === '*') $('newPlanets').value = activeSlug; };
   $('createUserForm').onsubmit = action(async () => { await post('/api/admin/users', { name: $('newName').value, password: $('newPassword').value, role: $('newRole').value, planets: $('newPlanets').value.split(',').map(s => s.trim()).filter(Boolean) }, false); $('newPassword').value = ''; $('newName').value = ''; await renderUsers(); message('管理员账户已创建。'); });
   $('passwordForm').onsubmit = action(async () => { const target = passwordTarget; await post(`/api/admin/users/${target.id}`, { password: $('resetPassword').value }, false); $('passwordDialog').close(); if (target.id === user.id && !user.bootstrap) { signedOut(); message('密码已更新，请使用新密码登录。'); return; } await renderUsers(); message('密码已更新，该账户的旧会话已失效。'); });
