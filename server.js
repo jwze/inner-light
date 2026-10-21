@@ -49,7 +49,7 @@ function sameOrigin(req) {
   if (origin.host !== req.headers.host) fail(403,'不允许跨站提交。');
 }
 async function api(req,res,pathname,query) {
-  if (pathname === '/api/health') return json(res,200,{ok:true,storage:'sqlite',deployment:'single',moderation:process.env.MODERATION_URL ? 'configured' : 'manual-only'});
+  if (pathname === '/api/health') return json(res,200,{ok:true,storage:'sqlite',moderation:process.env.MODERATION_URL ? 'configured' : 'manual-only'});
   if (pathname === '/api/auth/login' && req.method === 'POST') {
     const value = await body(req); const result = auth.login(value.name,value.password,req.socket.remoteAddress || 'unknown');
     res.setHeader('Set-Cookie', secureCookie(result.token,43200)); return json(res,200,{user:result.user});
@@ -66,7 +66,7 @@ async function api(req,res,pathname,query) {
     if (userMatch && req.method === 'POST') return json(res,200,{user:auth.update(user,Number(userMatch[1]),await body(req))});
     if (pathname === '/api/admin/system' && req.method === 'GET') {
       auth.authorize(user,'default','settings');
-      return json(res,200,{uptime:process.uptime(),storage:'sqlite',deployment:'single',moderation:process.env.MODERATION_URL ? 'configured' : 'manual-only',rateLimits:{minute:MINUTE_LIMIT,hour:HOUR_LIMIT},blockedWordsCount:BLOCKED.size,sseClients:clients.size});
+      return json(res,200,{uptime:process.uptime(),storage:'sqlite',moderation:process.env.MODERATION_URL ? 'configured' : 'manual-only',rateLimits:{minute:MINUTE_LIMIT,hour:HOUR_LIMIT},blockedWordsCount:BLOCKED.size,sseClients:clients.size});
     }
     if (pathname === '/api/admin/planets') {
       if (req.method === 'GET') return json(res,200,{items:database.listPlanets().filter((p)=>user.planets.includes('*')||user.planets.includes(p.slug))});

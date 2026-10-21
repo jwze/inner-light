@@ -28,6 +28,15 @@ DATA_DIR=./data
 
 数据默认在 `data/inner-light.sqlite`（WAL 模式），数据库和必要目录会自动创建；重启沿用现有数据，不需要 Redis。`.env`、`data/`、`node_modules/`、生成的 `vendor/` 不提交 Git。不要删除 `data/`，也不要把本机目录与原 Docker 数据卷误认为同一份数据。
 
+### 进入管理端
+
+打开首页地址后的 `/admin`，例如 <http://localhost:3000/admin>；使用 Docker 默认端口时为 <http://localhost:3001/admin>。
+
+- 已有管理员账户：输入用户名和密码登录。
+- 首次使用：展开“首次使用 / 引导令牌登录”，输入 `.env` 中的 `ADMIN_TOKEN`，点击“使用令牌进入”。没有默认管理员用户名或密码。
+- 进入后，在“账户权限”创建正式账户，角色选择“所有者”、星球范围填写 `*`，密码为 12–128 位；以后可用该账户登录。
+- 若 `ADMIN_TOKEN` 尚未配置，在 `.env` 中设置长随机值后自行重启服务，再进行引导登录。令牌不要发到聊天或提交 Git。
+
 ### 停止旧服务与端口占用
 
 在原来的启动终端按 `Ctrl+C`，然后重新运行 `npm start`。如果找不到原终端，先在 PowerShell 查询 3000 端口的进程：
@@ -60,7 +69,7 @@ Invoke-RestMethod http://127.0.0.1:3000/api/health
 (Invoke-WebRequest -UseBasicParsing http://127.0.0.1:3000/ui.js).StatusCode
 ```
 
-健康接口应包含 `deployment: single`，`ui.js` 应返回 `200`。如果仍看到旧界面，在 Chrome / Edge 按 `F12` → `Application`：
+健康接口应包含 `ok: true` 和 `storage: sqlite`，`ui.js` 应返回 `200`。如果仍看到旧界面，在 Chrome / Edge 按 `F12` → `Application`：
 
 1. 在 `Service Workers` 中取消注册当前站点的 Service Worker。
 2. 在 `Cache Storage` 中只删除 `inner-light-public-` 开头的应用壳缓存。
@@ -68,7 +77,7 @@ Invoke-RestMethod http://127.0.0.1:3000/api/health
 
 不要为了更新界面使用“清除所有站点数据”，也不要删除 IndexedDB；其中保存着本设备尚未送达的发送箱内容。`localhost` 与 `127.0.0.1` 是不同的浏览器来源，排查时应针对实际使用的地址操作。
 
-## Docker 单实例部署（供用户自行执行）
+## Docker 部署（供用户自行执行）
 
 以下教程仅作部署参考。用户当前明确禁止代理在其本机执行任何 Docker 相关操作，包括只读查询、配置校验、容器或守护进程交互；任务结束后也不得启动 Docker，除非用户明确更改这一约束。允许按需编辑 Dockerfile、Compose 和教程文本，不代表授权运行其中命令。
 
@@ -82,9 +91,9 @@ docker compose down
 
 应用：<http://localhost:3001/>，管理后台：<http://localhost:3001/admin>。可通过 `.env` 的 `DOCKER_PORT` 修改端口；默认仅绑定本机。SQLite 数据继续使用原有的 `planet-data` 命名卷，升级时保持原 Compose 项目名，避免另建空卷。不要使用 `docker compose down -v`，该选项会删除数据卷。
 
-部署只运行一个 Node.js 实例。SSE 在该进程内向当前连接的客户端推送更新，断线后通过重连快照和轮询校准。之前的双实例方案没有负载均衡器，两个端口需要分别访问；现已移除第二实例和 Redis 服务、配置、依赖，统一使用单实例入口。此配置不支持多副本间广播，也不是多服务器数据库复制；SQLite WAL 文件应保存在本机磁盘。
+SSE 由应用进程向当前连接的客户端推送更新，断线后通过重连快照和轮询校准。SQLite WAL 文件保存在服务所在设备的磁盘上。
 
-Compose 转发审核服务及超时、提交限流、`TRUST_PROXY` 和 `COOKIE_SECURE` 设置。通过 HTTPS 反向代理公开服务时，设置 `COOKIE_SECURE=1`；只有代理确实覆盖 `X-Forwarded-For` 时才开启 `TRUST_PROXY=1`。原双实例部署升级前先停止旧 `replica` 和 `redis` 容器，再使用新配置启动；可用 `docker compose up -d --build --remove-orphans` 清理旧项目容器。旧 `redis-data` 卷不会自动删除，也不再使用。
+Compose 转发审核服务及超时、提交限流、`TRUST_PROXY` 和 `COOKIE_SECURE` 设置。通过 HTTPS 反向代理公开服务时，设置 `COOKIE_SECURE=1`；只有代理确实覆盖 `X-Forwarded-For` 时才开启 `TRUST_PROXY=1`。升级时保持原有的数据卷和项目名。
 
 ## 公开页面扩展
 

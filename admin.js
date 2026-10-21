@@ -190,7 +190,7 @@
     if (!owner()) return;
     const info = await data('/api/admin/system', {}, false);
     const uptime = Math.floor(Number(info.uptimeSeconds ?? info.uptime ?? 0));
-    const rows = [['部署模式', '单实例'], ['数据存储', info.storage === 'sqlite' ? 'SQLite · WAL' : info.storage], ['运行时长', `${Math.floor(uptime / 3600)} 小时 ${Math.floor(uptime / 60) % 60} 分钟`], ['内容审核', info.moderation === 'configured' ? '第三方服务已配置' : '人工审核'], ['实时连接', `${info.sseClients ?? info.clients ?? 0} 个 SSE 连接`], ['每分钟提交上限', info.rateLimits?.minute ?? info.limits?.minute ?? '—'], ['每小时提交上限', info.rateLimits?.hour ?? info.limits?.hour ?? '—'], ['拦截关键词', `${info.blockedWordsCount ?? info.blockedWordCount ?? 0} 个`]];
+    const rows = [['数据存储', info.storage === 'sqlite' ? 'SQLite · WAL' : info.storage], ['运行时长', `${Math.floor(uptime / 3600)} 小时 ${Math.floor(uptime / 60) % 60} 分钟`], ['内容审核', info.moderation === 'configured' ? '第三方服务已配置' : '人工审核'], ['实时连接', `${info.sseClients ?? info.clients ?? 0} 个 SSE 连接`], ['每分钟提交上限', info.rateLimits?.minute ?? info.limits?.minute ?? '—'], ['每小时提交上限', info.rateLimits?.hour ?? info.limits?.hour ?? '—'], ['拦截关键词', `${info.blockedWordsCount ?? info.blockedWordCount ?? 0} 个`]];
     $('systemDetails').replaceChildren(...rows.map(([label, value]) => { const node = el('div'); node.append(el('dt', label), el('dd', String(value ?? '—'))); return node; }));
   }
   async function load(slug = activeSlug) {
