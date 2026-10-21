@@ -2,8 +2,10 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { buildSync } = require('esbuild');
-fs.mkdirSync(path.join(__dirname, 'vendor'), { recursive: true });
-buildSync({ entryPoints: [require.resolve('qrcode/lib/browser.js')], bundle: true, minify: true, platform: 'browser', format: 'iife', globalName: 'QRCode', outfile: path.join(__dirname, 'vendor/qrcode.js') });
+const ROOT_DIR = path.resolve(__dirname, '..');
+const PUBLIC_DIR = path.join(ROOT_DIR, 'public');
+fs.mkdirSync(path.join(PUBLIC_DIR, 'vendor'), { recursive: true });
+buildSync({ entryPoints: [require.resolve('qrcode/lib/browser.js')], bundle: true, minify: true, platform: 'browser', format: 'iife', globalName: 'QRCode', outfile: path.join(PUBLIC_DIR, 'vendor/qrcode.js') });
 // Tiny deterministic PNG encoder for installable bitmap icons (no native image dependency).
 const zlib = require('node:zlib');
 function crc32(buffer) { let crc = -1; for (const byte of buffer) { crc ^= byte; for (let j=0;j<8;j++) crc=(crc>>>1)^((crc&1)?0xedb88320:0); } return (crc^-1)>>>0; }
@@ -15,9 +17,12 @@ for (const size of [192,512]) {
     const color=star||ring||center?[145,234,221]:[17,18,37];const i=y*(size*4+1)+1+x*4;raw[i]=color[0];raw[i+1]=color[1];raw[i+2]=color[2];raw[i+3]=255;
   }
   const ihdr=Buffer.alloc(13);ihdr.writeUInt32BE(size,0);ihdr.writeUInt32BE(size,4);ihdr[8]=8;ihdr[9]=6;
-  fs.writeFileSync(path.join(__dirname,`vendor/icon-${size}.png`),Buffer.concat([Buffer.from('89504e470d0a1a0a','hex'),chunk('IHDR',ihdr),chunk('IDAT',zlib.deflateSync(raw)),chunk('IEND',Buffer.alloc(0))]));
+  fs.writeFileSync(path.join(PUBLIC_DIR,`vendor/icon-${size}.png`),Buffer.concat([Buffer.from('89504e470d0a1a0a','hex'),chunk('IHDR',ihdr),chunk('IDAT',zlib.deflateSync(raw)),chunk('IEND',Buffer.alloc(0))]));
 }
 const crypto = require('node:crypto');
 const hash = crypto.createHash('sha256');
-for (const file of fs.readdirSync(__dirname).filter((name) => /\.(js|css|html|webmanifest|svg)$/.test(name)).sort()) hash.update(file).update(fs.readFileSync(path.join(__dirname,file)));
-fs.writeFileSync(path.join(__dirname,'vendor/version.js'), `self.INNER_LIGHT_ASSET_VERSION=${JSON.stringify(hash.digest('hex').slice(0,16))};`);
+const sources = ['public', 'src/server', 'scripts'].flatMap((directory) => fs.readdirSync(path.join(ROOT_DIR, directory))
+  .filter((name) => /\.(js|css|html|webmanifest|svg)$/.test(name))
+  .map((name) => ({ name, filename: path.join(ROOT_DIR, directory, name) })));
+for (const file of sources.sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0)) hash.update(file.name).update(fs.readFileSync(file.filename));
+fs.writeFileSync(path.join(PUBLIC_DIR,'vendor/version.js'), `self.INNER_LIGHT_ASSET_VERSION=${JSON.stringify(hash.digest('hex').slice(0,16))};`);

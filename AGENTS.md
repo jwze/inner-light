@@ -129,21 +129,23 @@
 
 | 文件 | 职责 |
 | --- | --- |
-| `index.html`、`style.css` | 公开页面结构与样式 |
-| `app.js` | 词球渲染、交互、发送、快照与 SSE、稳定球面坐标与到达反馈 |
-| `core.js` | 前后端共用校验、规范化及基础几何规则 |
-| `effects.js` | 发射与球面效果几何、旋转辅助 |
-| `server.js` | HTTP 服务、静态文件白名单、公开与管理接口、SSE |
-| `database.js`、`database-features.js` | SQLite、迁移、事务、统计及导入恢复 |
-| `auth.js`、`moderation.js` | 管理员会话和权限、审核适配 |
-| `admin.html`、`admin.css`、`admin.js` | 管理台结构、样式和业务交互 |
-| `ui.js`、`ui.css` | 全站弹窗标题、字体、确认交互与图片/图表全屏预览 |
-| `offline.js`、`sw.js` | 离线队列、重试与公共资源缓存 |
-| `extensions.js`、`extensions.css` | 分享、海报、洞察及扩展交互 |
-| `build-assets.js` | 本地二维码 bundle、图标和资源版本构建 |
+| `public/index.html`、`public/style.css` | 公开页面结构与样式 |
+| `public/app.js` | 词球渲染、交互、发送、快照与 SSE、稳定球面坐标与到达反馈 |
+| `public/core.js` | 前后端共用校验、规范化及基础几何规则；服务端直接引用，不复制 |
+| `public/effects.js` | 发射与球面效果几何、旋转辅助 |
+| `src/server/server.js` | HTTP 服务、静态文件白名单、公开与管理接口、SSE |
+| `src/server/database.js`、`src/server/database-features.js` | SQLite、迁移、事务、统计及导入恢复 |
+| `src/server/auth.js`、`src/server/moderation.js` | 管理员会话和权限、审核适配 |
+| `src/server/csv.js` | CSV 词库交换格式 |
+| `public/admin.html`、`public/admin.css`、`public/admin.js` | 管理台结构、样式和业务交互 |
+| `public/ui.js`、`public/ui.css` | 全站弹窗标题、字体、确认交互与图片/图表全屏预览 |
+| `public/offline.js`、`public/sw.js` | 离线队列、重试与公共资源缓存 |
+| `public/extensions.js`、`public/extensions.css` | 分享、海报、洞察及扩展交互 |
+| `scripts/build-assets.js`、`scripts/check.js` | 本地二维码、图标、资源版本构建与语法检查 |
+| `docs/FEATURE_AUDIT.md` | 功能范围与历史验收记录 |
 | `.env.example`、`Dockerfile`、`compose.yaml` | 环境示例和容器部署定义 |
 
-新增静态资源时检查 `server.js` 白名单；公共离线资源调整时检查 `sw.js` 缓存范围。不要让管理资源进入公共离线缓存。生成的 `vendor/` 不手动维护。
+浏览器资源位于 `public/`，但对外 URL 仍使用 `/app.js`、`/sw.js` 等原路径，不添加 `/public` 前缀。新增静态资源时检查 `src/server/server.js` 白名单；公共离线资源调整时检查 `public/sw.js` 缓存范围。不要让管理资源进入公共离线缓存。生成的 `public/vendor/` 不手动维护。根目录 `.env`、默认 `data/` 及根目录执行 npm 命令的约定不变。
 
 ## 9. 验证与如实交付
 
@@ -162,7 +164,7 @@ git diff --check
 - 先前的管理接口临时检查覆盖权限、显式创建、事务回滚、容量、密码重置和 SSE；词球临时检查在模拟 DOM 与时钟中覆盖发送与渲染。临时脚本及对应 npm 入口已在验证后删除，不能继续列作可用命令。
 - 界面或动画改动还应进行实际浏览器检查；覆盖桌面和手机，检查控制台和布局。工具无法使用时，说明尚未完成浏览器验收，不把模拟测试等同于真实浏览器效果。
 - 已在隔离的本机 Chrome 中检查桌面与手机弹窗、二维码/海报/SVG/后台趋势图全屏预览、缩放与返回焦点、滚动锁定，以及词语编辑、星球创建、批量审核和确认取消/执行。分享弹窗在 1440×900、1366×768、390×844、360×640 下无内部溢出，海报生成函数和预览前后原始像素不变。该记录不替代后续改动的专项检查，也不表示已穷尽所有业务路径。
-- `README.md`、`FEATURE_AUDIT.md` 已按已实现的后台能力更新；实现范围与实际验收记录须分开说明。
+- `README.md`、`docs/FEATURE_AUDIT.md` 已按已实现的后台能力更新；实现范围与实际验收记录须分开说明。
 - 旧版本的容器、实时广播及浏览器验收结果，不自动适用于当前代码。未运行的验证、缺失的供应商凭据及失败的命令必须如实说明。
 
 ## 10. 收尾、清理与 Git 交付约定

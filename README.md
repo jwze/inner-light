@@ -2,6 +2,24 @@
 
 公共旋转文字星球，Node.js 24 + SQLite + 原生浏览器前端。所有人共享房间词频，匿名发送；支持审核、PWA 离线发送、分享海报、趋势关系图和管理员分权。
 
+## 目录结构
+
+```text
+inner-light/
+├── public/             # 浏览器页面、样式、脚本与 PWA 资源
+│   └── vendor/         # 构建生成的二维码、图标与资源版本（不提交）
+├── src/
+│   └── server/         # HTTP 服务、数据库、认证、审核与 CSV 模块
+├── scripts/            # 资源构建与语法检查
+├── docs/               # 功能审计等补充文档
+├── data/               # 本机 SQLite 数据与日志（不提交）
+├── package.json        # npm 命令与依赖
+├── Dockerfile          # 容器构建入口
+└── compose.yaml        # 部署配置
+```
+
+`public/core.js` 仍由浏览器与服务端共用，不复制维护。服务端仅通过原有白名单提供 `public/` 资源，访问路径仍是 `/app.js`、`/admin`、`/sw.js` 等，不添加 `/public` 前缀。项目根目录的 `.env` 和默认 `data/` 位置保持不变，所有 npm 命令仍在项目根目录执行。
+
 ## Windows 本机启动
 
 需要 Node.js 24 或更新版本。打开 PowerShell，先进入项目目录；安装依赖通常只在首次启动或依赖更新后执行：
@@ -24,9 +42,9 @@ HOST=127.0.0.1
 DATA_DIR=./data
 ```
 
-`npm start` 自动先构建二维码组件、PWA 图标和资源版本，再启动 `node server.js`。终端需要保持打开；看到 `Inner Light: http://localhost:3000` 后，访问首页 <http://localhost:3000/> 或后台 <http://localhost:3000/admin>。Node 内置 SQLite 可能打印 ExperimentalWarning，这不是启动失败。
+`npm start` 自动先构建二维码组件、PWA 图标和资源版本，再启动 `node src/server/server.js`。终端需要保持打开；看到 `Inner Light: http://localhost:3000` 后，访问首页 <http://localhost:3000/> 或后台 <http://localhost:3000/admin>。Node 内置 SQLite 可能打印 ExperimentalWarning，这不是启动失败。
 
-数据默认在 `data/inner-light.sqlite`（WAL 模式），数据库和必要目录会自动创建；重启沿用现有数据，不需要 Redis。`.env`、`data/`、`node_modules/`、生成的 `vendor/` 不提交 Git。不要删除 `data/`，也不要把本机目录与原 Docker 数据卷误认为同一份数据。
+数据默认在 `data/inner-light.sqlite`（WAL 模式），数据库和必要目录会自动创建；重启沿用现有数据，不需要 Redis。`.env`、`data/`、`node_modules/`、生成的 `public/vendor/` 不提交 Git。不要删除 `data/`，也不要把本机目录与原 Docker 数据卷误认为同一份数据。
 
 ### 进入管理端
 
@@ -169,7 +187,7 @@ ADMIN_TOKEN 仍是紧急引导凭据，设置高熵值或在创建 owner 后移�
 
 ## 后台管理能力
 
-后台已实现深绿侧栏与浅色卡片的分区管理台，以下入口接通管理接口；此前已通过 13 组管理接口检查，弹窗、图表预览及主要管理操作已完成桌面和手机浏览器检查，具体范围见 FEATURE_AUDIT.md：
+后台已实现深绿侧栏与浅色卡片的分区管理台，以下入口接通管理接口；此前已通过 13 组管理接口检查，弹窗、图表预览及主要管理操作已完成桌面和手机浏览器检查，具体范围见 `docs/FEATURE_AUDIT.md`：
 
 - 总览：累计与今日共鸣、公开词语、待审数量、七天趋势、访客、热门词及最近提交；运行状态仅向 owner 展示。
 - 星球：显式创建和切换现有星球；创建时填写 slug、名称、描述、主题、预审开关和是否加入示例词（`seed`）。设置支持编辑描述。
@@ -242,4 +260,4 @@ git diff --check
 
 启动时兼容旧 SQLite 表，保留原数据；旧 JSON `planet.json` / `planets/*.json` 首次迁移并保留源文件。部署升级前先备份 SQLite。旧 JSON 的历史缺失和累计基数无法凭空恢复。
 
-验收范围见 [FEATURE_AUDIT.md](FEATURE_AUDIT.md)。
+验收范围见 [FEATURE_AUDIT.md](docs/FEATURE_AUDIT.md)。

@@ -3,7 +3,7 @@ const { DatabaseSync } = require('node:sqlite');
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
-const Core = require('./core.js');
+const Core = require('../../public/core.js');
 
 function openDatabase(directory) {
   fs.mkdirSync(directory, { recursive: true });

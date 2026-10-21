@@ -4,10 +4,10 @@
   "private": true,
   "description": "A dependency-free rotating word sphere with launch animations",
   "scripts": {
-    "build": "node build-assets.js",
-    "check": "node check.js",
+    "build": "node scripts/build-assets.js",
+    "check": "node scripts/check.js",
     "prestart": "npm run build",
-    "start": "node server.js"
+    "start": "node src/server/server.js"
   },
   "engines": {
     "node": ">=24.0.0"

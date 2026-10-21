@@ -1,6 +1,6 @@
 'use strict';
 const crypto = require('node:crypto');
-const Core = require('./core');
+const Core = require('../../public/core');
 function features({ get, all, run, transaction, snapshot }) {
   const invalid = (message) => { throw Object.assign(new Error(message), { status: 422 }); };
   const digest = (value) => crypto.createHash('sha256').update(value).digest('hex');
