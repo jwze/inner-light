@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#f3f0e8" />
+    <meta name="theme-color" content="#0b1c19" />
     <meta name="description" content="写下此刻的念头，让它在一颗立体旋转的星球上慢慢发光。" />
     <title>心光 · INNER LIGHT</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23080e19'/%3E%3Cpath d='M32 10v44M10 32h44M16 16l32 32M48 16L16 48' stroke='%23b4ecd9' stroke-width='2'/%3E%3C/svg%3E" />
@@ -30,22 +30,21 @@
       <symbol id="icon-arrow" viewBox="0 0 24 24"><path d="M4 12h16m-6-6 6 6-6 6" /></symbol>
       <symbol id="icon-refresh" viewBox="0 0 24 24"><path d="M20 10a8 8 0 1 0-2 8M20 4v6h-6" /></symbol>
     </svg>
-    <main class="experience">
-      <header class="identity">
-        <a class="wordmark" href="index.html" aria-label="心光首页"><svg class="icon brand-symbol" aria-hidden="true"><use href="#icon-light" /></svg><span>心光</span><span class="wordmark-en">INNER LIGHT</span></a>
+    <main class="cosmos">
+      <header class="scene-header">
+        <div class="scene-identity">
+          <a class="wordmark" href="index.html" aria-label="心光首页"><svg class="icon brand-symbol" aria-hidden="true"><use href="#icon-light" /></svg><span>心光</span><span class="wordmark-en">INNER LIGHT</span></a>
+          <div class="planet-line"><h2 id="planetName">同频宇宙</h2><p id="saveStatus" class="save-status" role="status">连接公共星球中…</p></div>
+        </div>
+        <nav class="scene-tools" aria-label="探索星球">
+          <button id="libraryBtn" type="button" aria-label="公共词库" aria-haspopup="dialog" title="公共词库"><svg class="icon" aria-hidden="true"><use href="#icon-library" /></svg><span>词库</span></button>
+          <button id="openInsights" type="button" aria-label="星球洞察" aria-haspopup="dialog" title="星球洞察"><svg class="icon" aria-hidden="true"><use href="#icon-insights" /></svg><span>洞察</span></button>
+          <button id="openOutbox" type="button" aria-label="离线发送箱" aria-haspopup="dialog" title="离线发送箱"><svg class="icon" aria-hidden="true"><use href="#icon-outbox" /></svg><span>发送箱</span></button>
+          <button id="openShareTools" class="share-control" type="button" aria-label="分享星球" aria-haspopup="dialog" title="分享星球"><svg class="icon" aria-hidden="true"><use href="#icon-share" /></svg><span>分享星球</span></button>
+        </nav>
       </header>
 
-      <section class="introduction" aria-labelledby="pageTitle">
-        <p class="section-kicker">留一点光，给此刻</p>
-        <h1 id="pageTitle">让念头，<br />有个去处。</h1>
-        <p class="introduction-copy">不必整理好情绪。<br />写下此刻，让它在星球上慢慢发光。</p>
-      </section>
-
       <section class="universe" aria-label="互动文字星球">
-        <header class="planet-heading">
-          <div><p class="planet-label">共同点亮的星球</p><h2 id="planetName">同频宇宙</h2></div>
-          <button id="enrichBtn" class="refresh-control" type="button" aria-label="刷新公共星球" title="刷新公共星球"><svg class="icon" aria-hidden="true"><use href="#icon-refresh" /></svg></button>
-        </header>
         <div id="sphereStage" class="sphere-stage" tabindex="0" role="region" aria-label="旋转词球。拖动或使用方向键旋转。">
           <div class="ambient-glow" aria-hidden="true"></div>
           <div id="particleLayer" class="particle-layer" aria-hidden="true"></div>
@@ -54,40 +53,36 @@
           <div id="effectLayer" class="effect-layer" aria-hidden="true"></div>
           <div id="emptyState" class="empty-state" hidden><span aria-hidden="true">✧</span><p>宇宙安静，等待第一束光。</p></div>
         </div>
-        <footer class="planet-footer">
-          <p id="interactionHint" class="interaction-hint">滑动星球 · 遇见同频的念头</p>
-          <dl class="planet-metrics">
-            <div><dt>公开念头</dt><dd id="wordCount">0</dd></div>
-            <div><dt>累计共鸣</dt><dd id="totalCount">0</dd></div>
-            <div><dt>今日共鸣 <abbr title="协调世界时">UTC</abbr></dt><dd id="todayCount">0</dd></div>
-            <div><dt>活跃访客</dt><dd id="activeCount">0</dd></div>
-          </dl>
-        </footer>
       </section>
 
-      <section class="writing-desk" aria-label="发送一个念头">
-        <label class="input-label" for="wordInput">你的这一刻</label>
+      <section class="transmission" aria-labelledby="pageTitle">
+        <p class="section-kicker"><span aria-hidden="true"></span>每个念头，都有回响</p>
+        <h1 id="pageTitle">此刻的你，<br />也在发光。</h1>
+        <p class="introduction-copy">把此刻的念头，送进同一片星空。</p>
         <form id="wordForm" class="composer" novalidate>
-          <input id="wordInput" type="text" placeholder="有什么想留在这里？" autocomplete="off" spellcheck="false" aria-describedby="inputHelp feedback" />
-          <div class="composer-actions"><span id="charCount" class="char-count" aria-hidden="true">0 / 20</span><button id="sendBtn" class="send-button" type="submit"><span>点亮星球</span><svg class="icon" aria-hidden="true"><use href="#icon-arrow" /></svg></button></div>
+          <label class="sr-only" for="wordInput">想送进星球的文字，最多 20 个字</label>
+          <input id="wordInput" type="text" placeholder="此刻，你在想什么？" autocomplete="off" spellcheck="false" aria-describedby="inputHelp feedback" />
+          <span id="charCount" class="char-count" aria-hidden="true">0 / 20</span>
+          <button id="sendBtn" class="send-button" type="submit"><span>发射</span><svg class="icon" aria-hidden="true"><use href="#icon-arrow" /></svg></button>
         </form>
-        <p id="inputHelp" class="input-help">内容公开 · Enter 发送 · 最多 20 字</p>
+        <p id="inputHelp" class="input-help">内容公开 · Enter 发射 · 最多 20 字</p>
         <p id="feedback" class="feedback" role="status" aria-live="polite" aria-atomic="true"></p>
       </section>
 
-      <nav class="tool-navigation" aria-label="探索星球">
-        <button id="libraryBtn" type="button" aria-label="公共词库" aria-haspopup="dialog" title="公共词库"><svg class="icon" aria-hidden="true"><use href="#icon-library" /></svg><span>公共词库</span><svg class="icon tool-arrow" aria-hidden="true"><use href="#icon-arrow" /></svg></button>
-        <button id="openInsights" type="button" aria-label="星球洞察" aria-haspopup="dialog" title="星球洞察"><svg class="icon" aria-hidden="true"><use href="#icon-insights" /></svg><span>星球洞察</span><svg class="icon tool-arrow" aria-hidden="true"><use href="#icon-arrow" /></svg></button>
-        <button id="openOutbox" type="button" aria-label="离线发送箱" aria-haspopup="dialog" title="离线发送箱"><svg class="icon" aria-hidden="true"><use href="#icon-outbox" /></svg><span>发送箱</span><svg class="icon tool-arrow" aria-hidden="true"><use href="#icon-arrow" /></svg></button>
-        <button id="openShareTools" type="button" aria-label="分享星球" aria-haspopup="dialog" title="分享星球"><svg class="icon" aria-hidden="true"><use href="#icon-share" /></svg><span>分享星球</span><svg class="icon tool-arrow" aria-hidden="true"><use href="#icon-arrow" /></svg></button>
-      </nav>
+      <aside class="gesture-note" aria-label="星球操作提示"><p id="interactionHint">滑动星球 · 遇见同频的念头</p><span><kbd>←</kbd> <kbd>→</kbd> 方向键也能探索</span><button id="enrichBtn" type="button" aria-label="刷新公共星球" title="刷新公共星球"><svg class="icon" aria-hidden="true"><use href="#icon-refresh" /></svg><span>刷新星球</span></button></aside>
 
-      <footer class="desk-footer">
-        <div class="desk-notes">
-          <details class="recent-arrivals"><summary>最近抵达 <span aria-hidden="true">+</span></summary><div id="recentList" class="recent-list" aria-live="polite"><span class="recent-empty">等待新的光</span></div></details>
-          <details class="privacy-details"><summary>公开与隐私 <span aria-hidden="true">+</span></summary><p class="privacy-note">念头将公开展示，无需注册。使用匿名 Cookie 防刷，不收集姓名或手机号。</p></details>
+      <footer class="scene-footer">
+        <dl class="orbit-stats" aria-label="星球动态">
+          <div><dt>公开念头</dt><dd id="wordCount">0</dd></div>
+          <div><dt>真实共鸣</dt><dd id="totalCount">0</dd></div>
+          <div><dt>今日 <abbr title="协调世界时">UTC</abbr></dt><dd id="todayCount">0</dd></div>
+          <div><dt>活跃访客</dt><dd id="activeCount">0</dd></div>
+        </dl>
+        <div class="scene-notes">
+          <div class="scene-note"><button class="note-control" type="button" popovertarget="recentPopover">最近抵达 <span aria-hidden="true">⌃</span></button><section id="recentPopover" class="note-popover" popover aria-labelledby="recentTitle"><h3 id="recentTitle">刚刚抵达的念头</h3><div id="recentList" class="recent-list" aria-live="polite"><span class="recent-empty">等待新的光</span></div></section></div>
+          <div class="scene-note"><button class="note-control" type="button" popovertarget="privacyPopover">公开与隐私</button><section id="privacyPopover" class="note-popover" popover aria-labelledby="privacyTitle"><h3 id="privacyTitle">在这里，安心表达</h3><p>念头将公开展示，无需注册。使用匿名 Cookie 防刷，不收集姓名或手机号。</p><p>离线发送箱只保存在当前设备，请勿在发送前清理浏览器数据。</p></section></div>
+          <button id="installApp" class="install-button" type="button" hidden>安装心光 <span aria-hidden="true">↗</span></button>
         </div>
-        <div class="desk-connection"><p id="saveStatus" class="save-status" role="status">连接公共星球中…</p><button id="installApp" class="install-button" type="button" hidden>安装心光 <span aria-hidden="true">↗</span></button></div>
       </footer>
     </main>
 
