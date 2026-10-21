@@ -32,12 +32,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .wordmark { display: inline-flex; align-items: center; gap: 10px; font-size: 22px; font-weight: 650; letter-spacing: -.02em; }
 .brand-symbol { width: 24px; height: 24px; flex-basis: 24px; color: var(--text); stroke-width: 1.4; }
 .wordmark-en { margin-left: 3px; color: #c3cdc0; font-size: 10px; font-weight: 500; letter-spacing: .13em; }
-.planet-line { display: flex; align-items: center; flex-wrap: wrap; gap: 5px 12px; margin-top: 8px; font-family: ui-monospace, "SFMono-Regular", Consolas, "Microsoft YaHei", monospace; }
-.planet-line h2 { max-width: 280px; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #c1cdbf; font-size: 11px; line-height: 1.7; font-weight: 400; }
-.save-status { display: flex; align-items: center; gap: 6px; margin: 0; color: #91a89a; font-size: 10px; line-height: 1.7; }
-.save-status::before { content: ""; width: 4px; height: 4px; flex: 0 0 4px; border-radius: 50%; background: #a0c5b1; }
-.save-status.offline { color: #f4a083; }
-.save-status.offline::before { background: currentColor; }
 .scene-tools { display: flex; align-items: center; gap: 8px; }
 .scene-tools button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 10px 14px; border: 1px solid #d8e5d426; border-radius: 999px; background: #10221cb3; color: #d1dbcf; font-size: 12px; font-weight: 500; white-space: nowrap; backdrop-filter: blur(12px); transition: border-color .18s, color .18s, background .18s; }
 .scene-tools button:hover { border-color: #d8e5d45c; background: #234036b3; color: var(--text); }
@@ -59,17 +53,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .send-button { display: inline-flex; flex-shrink: 0; align-items: center; justify-content: center; gap: 12px; min-height: 46px; padding: 12px 18px; border: 0; border-radius: 999px; background: var(--accent); color: var(--accent-ink); font-size: 14px; font-weight: 650; transition: background .18s, transform .18s; }
 .send-button:hover { background: #ff8a63; }
 .send-button:active { transform: scale(.97); }
-.input-help { margin: 10px 0 0; padding-left: 2px; color: #91a799; font-size: 11px; line-height: 1.7; }
 .feedback { position: absolute; top: 100%; left: 2px; right: 0; margin: 8px 0 0; color: #c1dfc9; font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
 .feedback:empty { display: none; }
 .feedback.error { color: #ffb398; }
 .gesture-note { position: absolute; z-index: 3; right: 40px; bottom: 116px; max-width: 300px; color: #a3b5a6; font-size: 11px; line-height: 1.8; text-align: right; }
 .gesture-note p { margin: 0 0 2px; }
-.gesture-note > span { font-family: ui-monospace, "SFMono-Regular", Consolas, "Microsoft YaHei", monospace; font-size: 10px; }
-.gesture-note kbd { font: inherit; color: #c3d1c1; }
-.gesture-note button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; margin: 8px -8px 0 0; padding: 6px 8px; border: 0; border-radius: 999px; background: transparent; color: #adbdaf; font-size: 11px; }
-.gesture-note button:hover { color: var(--text); background: #d8e5d40b; }
-.gesture-note .icon { width: 13px; height: 13px; flex-basis: 13px; }
 .scene-footer { position: absolute; z-index: 10; inset: auto 40px 24px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
 .orbit-stats { display: flex; align-items: center; gap: 8px; margin: 0; }
 .orbit-stats > div { display: flex; align-items: center; gap: 7px; min-width: 0; padding: 10px 13px; border: 1px solid #d8e5d41f; border-radius: 999px; background: #1c342cbd; backdrop-filter: blur(10px); }
@@ -140,9 +128,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 #libraryFeedback { color: #c1dfc9; font-size: 13px; line-height: 1.7; }
 #libraryFeedback:empty { display: none; }
 .library-empty { padding: 40px 0; color: var(--muted); font-size: 14px; text-align: center; }
-.confirm-panel { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--rule); }
-.confirm-panel p { font-size: 14px; line-height: 1.7; }
-.confirm-panel > div { display: flex; justify-content: flex-end; gap: 12px; }
 .share-toast { position: fixed; left: 50%; bottom: 24px; z-index: 20; transform: translateX(-50%); max-width: calc(100vw - 32px); padding: 14px 20px; border: 1px solid #c3d4bc30; border-radius: 999px; background: #10251ff5; color: var(--text); font-size: 14px; text-align: center; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .noscript-notice { position: fixed; inset: auto 12px 12px; padding: 20px; background: #10251f; color: var(--text); border: 1px solid var(--rule); text-align: center; z-index: 100; }
@@ -150,8 +135,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 @media (min-width: 801px) and (max-width: 1100px) {
   .scene-header { inset-inline: 28px; }
   .wordmark-en { display: none; }
-  .planet-line { display: block; }
-  .planet-line h2 { max-width: 230px; }
   .transmission { left: 28px; width: 400px; }
   .transmission h1 { font-size: 48px; }
   .universe { left: 59%; width: 76vw; }
@@ -175,9 +158,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
   .wordmark { gap: 7px; font-size: 20px; }
   .wordmark-en { display: none; }
   .brand-symbol { width: 21px; height: 21px; flex-basis: 21px; }
-  .planet-line { display: flex; flex-direction: column; align-items: flex-start; gap: 0; margin-top: 5px; }
-  .planet-line h2 { max-width: 136px; font-size: 10px; }
-  .save-status { font-size: 9px; gap: 5px; }
   .scene-tools { gap: 4px; }
   .scene-tools button { width: 44px; height: 44px; padding: 0; }
   .scene-tools button > span { display: none; }
@@ -191,13 +171,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
   #wordInput { font-size: 16px; }
   .char-count { font-size: 9px; }
   .send-button { min-height: 44px; gap: 8px; padding: 11px 14px; font-size: 13px; }
-  .input-help { margin-top: 8px; font-size: 10px; }
   .feedback { margin-top: 5px; font-size: 11px; line-height: 1.6; }
   .gesture-note { inset: 94px 20px auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; max-width: none; text-align: left; }
-  .gesture-note p { max-width: calc(100% - 44px); margin: 0; color: #93aa9b; font-size: 10px; line-height: 1.6; }
-  .gesture-note > span, .gesture-note button > span { display: none; }
-  .gesture-note button { flex: 0 0 36px; width: 36px; height: 36px; min-height: 36px; margin: 0 -6px 0 0; padding: 0; }
-  .gesture-note .icon { width: 15px; height: 15px; flex-basis: 15px; }
+  .gesture-note p { margin: 0; color: #93aa9b; font-size: 10px; line-height: 1.6; }
   .scene-footer { inset: auto 20px max(12px, env(safe-area-inset-bottom)); flex-direction: column; align-items: stretch; gap: 6px; }
   .orbit-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
   .orbit-stats > div { flex-direction: column-reverse; gap: 2px; padding: 8px 4px; border-radius: 16px; }
@@ -216,9 +192,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
   .scene-identity { max-width: calc(100% - 184px); }
   .wordmark { font-size: 18px; gap: 5px; }
   .brand-symbol { width: 20px; height: 20px; flex-basis: 20px; }
-  .planet-line { display: block; }
-  .planet-line h2 { max-width: 100%; }
-  .save-status { display: none; }
   .transmission { inset-inline: 16px; }
   .composer { padding-left: 14px; gap: 7px; }
   .char-count { display: none; }

@@ -144,9 +144,6 @@ body.public-ui #libraryFeedback { color: #ffa188; font-size: 14px; line-height: 
 body.public-ui dialog.ui-dialog .dialog-footer { justify-content: space-between; }
 body.public-ui dialog.ui-dialog.ui-confirm { width: min(480px, calc(100vw - 40px)); }
 body.public-ui dialog.ui-dialog .ui-confirm-message { color: #c5d0c8; font-size: 16px; line-height: 1.8; }
-body.public-ui .confirm-panel { margin-top: 20px; padding-top: 20px; border-top: 1px solid #ffffff24; }
-body.public-ui .confirm-panel p { margin: 0 0 16px; color: #ffa188; font-size: 15px; line-height: 1.7; }
-body.public-ui .confirm-panel > div { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; }
 body.public-ui #outboxDialog.ui-dialog { width: min(640px, calc(100vw - 40px)); }
 body.public-ui .ext-outbox-item { margin-top: 20px; padding: 22px 0 4px; border: 0; border-top: 1px solid #ffffff24; overflow-wrap: anywhere; }
 body.public-ui .ext-outbox-item h3 { margin: 0 0 8px; color: #f5f1e8; font-size: 20px; }
@@ -154,27 +151,19 @@ body.public-ui .ext-outbox-item p { margin: 8px 0; color: #c5d0c8; font-size: 14
 body.public-ui .ext-outbox-item label { display: block; color: #a5b7ac; font-size: 14px; }
 body.public-ui .ext-outbox-item input { width: 100%; margin-top: 8px; }
 
-/* One sharing surface. Canvas contents and original dimensions stay untouched. */
+/* Poster-only sharing. Keep the original canvas content and full aspect ratio. */
 body.public-ui dialog.ui-dialog.ext-share-dialog {
-  --share-poster-height: max(96px, min(65dvh, 640px, calc(100dvh - 250px)));
-  width: min(900px, calc(100vw - 40px));
+  --share-poster-height: max(96px, min(70dvh, 700px, calc(100dvh - 250px)));
+  width: min(680px, calc(100vw - 40px));
   padding: 26px 32px;
 }
 body.public-ui dialog.ui-dialog.ext-share-dialog .ext-heading { margin-bottom: 20px; padding-bottom: 16px; }
-body.public-ui .ext-share-preview { display: grid; grid-template-columns: minmax(148px, .6fr) minmax(0, 1.4fr); align-items: center; gap: clamp(24px, 5vw, 56px); }
-body.public-ui :is(.ext-share-qr, .ext-share-poster) { min-width: 0; margin: 0; padding: 0; border: 0; background: transparent; }
-body.public-ui .ext-share-qr { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+body.public-ui .ext-share-preview { display: flex; justify-content: center; min-width: 0; }
+body.public-ui .ext-share-poster { width: 100%; min-width: 0; margin: 0; padding: 0; border: 0; background: transparent; }
 body.public-ui .ext-share-image { display: flex; align-items: center; justify-content: center; min-width: 0; }
-body.public-ui .ext-share-image canvas { display: block; flex: none; max-width: 100%; height: auto; object-fit: contain; }
-body.public-ui .ext-share-qr canvas { width: min(100%, 180px); aspect-ratio: 1; background: #fff; border-radius: 10px; }
-body.public-ui .ext-share-poster .ext-share-image { height: var(--share-poster-height); }
-body.public-ui .ext-share-poster canvas { width: min(100%, calc(var(--share-poster-height) * .75)); aspect-ratio: 3 / 4; border-radius: 10px; box-shadow: 0 12px 36px #0004; }
-body.public-ui dialog.ui-dialog .ext-share-qr-download { padding: 8px 12px; border-color: transparent; background: transparent; color: #a5b7ac; font-size: 13px; }
-body.public-ui dialog.ui-dialog .ext-share-qr-download:hover:not(:disabled) { color: #f5f1e8; border-color: #ffffff24; background: #ffffff0a; }
-body.public-ui dialog.ui-dialog .ext-share-actions { display: flex; flex-wrap: nowrap; justify-content: center; gap: 10px; padding: 0; margin: 22px 0 0; border: 0; }
+body.public-ui .ext-share-poster canvas { display: block; flex: none; width: min(100%, calc(var(--share-poster-height) * .75)); height: auto; aspect-ratio: 3 / 4; border-radius: 10px; box-shadow: 0 12px 36px #0004; }
+body.public-ui dialog.ui-dialog .ext-share-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; padding: 0; margin: 22px 0 0; border: 0; }
 body.public-ui dialog.ui-dialog .ext-share-primary { min-width: 142px; }
-body.public-ui dialog.ui-dialog .ext-share-refresh { flex: 0 0 44px; min-width: 44px; padding: 0; font-size: 24px; font-weight: 400; }
-body.public-ui .ext-share-switcher { display: none; }
 body.public-ui .ext-share-dialog .ext-status { text-align: center; font-size: 13px; }
 body.public-ui .ext-share-dialog .ext-url { margin-top: 12px; }
 
@@ -225,26 +214,15 @@ body.public-ui .ui-media-viewer .ui-media-scale { font-size: 13px; }
   }
   body.public-ui dialog.ui-dialog :is(.ext-heading, .dialog-heading, .ui-dialog-header) { gap: 12px; margin-bottom: 20px; padding-bottom: 18px; }
   body.public-ui dialog.ui-dialog.ext-share-dialog {
-    --share-poster-height: max(96px, min(62dvh, 640px, calc(100dvh - 320px)));
+    --share-poster-height: max(96px, min(70dvh, 700px, calc(100dvh - 250px)));
     width: calc(100vw - 24px);
     padding: 18px 20px;
   }
   body.public-ui dialog.ui-dialog.ext-share-dialog .ext-heading { margin-bottom: 12px; padding-bottom: 12px; }
-  body.public-ui .ext-share-switcher { display: flex; justify-content: center; gap: 6px; padding: 0; margin-bottom: 14px; }
-  body.public-ui dialog.ui-dialog .ext-share-choice { min-height: 44px; padding: 8px 20px; border: 1px solid transparent; border-radius: 999px; background: transparent; color: #a5b7ac; font-size: 14px; }
-  body.public-ui dialog.ui-dialog .ext-share-choice:hover:not(:disabled) { border-color: #ffffff24; background: #ffffff06; color: #f5f1e8; }
-  body.public-ui dialog.ui-dialog .ext-share-choice[aria-pressed="true"]:not(:disabled) { border-color: #ffffff2e; background: #ffffff10; color: #f5f1e8; }
-  body.public-ui .ext-share-preview { grid-template-columns: minmax(0, 1fr); gap: 0; }
-  body.public-ui .ext-share-dialog[data-preview="qr"] .ext-share-poster,
-  body.public-ui .ext-share-dialog[data-preview="poster"] .ext-share-qr { display: none; }
-  body.public-ui .ext-share-poster .ext-share-image { height: auto; }
-  body.public-ui .ext-share-qr { min-height: var(--share-poster-height); justify-content: center; }
-  body.public-ui .ext-share-qr canvas { width: min(70vw, 260px, calc(var(--share-poster-height) - 64px)); }
   body.public-ui dialog.ui-dialog .ext-share-actions { gap: 7px; margin-top: 16px; }
   body.public-ui dialog.ui-dialog .ext-share-actions > button { padding-inline: 12px; font-size: 13px; }
   body.public-ui dialog.ui-dialog .ext-share-actions .ext-share-primary { flex: 1; min-width: 0; }
-  body.public-ui .ext-share-dialog[data-preview="qr"] .ext-share-primary { display: none; }
-  body.public-ui dialog.ui-dialog.ext-share-dialog:has(.ext-url:not([hidden])) { --share-poster-height: max(96px, min(52dvh, calc(100dvh - 410px))); }
+  body.public-ui dialog.ui-dialog.ext-share-dialog:has(.ext-url:not([hidden])) { --share-poster-height: max(96px, min(60dvh, calc(100dvh - 330px))); }
   body.public-ui .ext-actions { gap: 8px; }
   body.public-ui .ext-actions label { width: 100%; justify-content: space-between; gap: 8px; }
   body.public-ui .library-row { flex-wrap: wrap; gap: 10px; }

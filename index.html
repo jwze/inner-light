@@ -28,13 +28,11 @@
       <symbol id="icon-outbox" viewBox="0 0 24 24"><path d="m4 5-2 9v5h20v-5l-2-9H4ZM2 14h6l2 3h4l2-3h6M12 5v7m-3-3 3 3 3-3" /></symbol>
       <symbol id="icon-share" viewBox="0 0 24 24"><path d="M14 3h7v7M21 3 10 14M10 5H4v15h15v-6" /></symbol>
       <symbol id="icon-arrow" viewBox="0 0 24 24"><path d="M4 12h16m-6-6 6 6-6 6" /></symbol>
-      <symbol id="icon-refresh" viewBox="0 0 24 24"><path d="M20 10a8 8 0 1 0-2 8M20 4v6h-6" /></symbol>
     </svg>
     <main class="cosmos">
       <header class="scene-header">
         <div class="scene-identity">
           <a class="wordmark" href="index.html" aria-label="心光首页"><svg class="icon brand-symbol" aria-hidden="true"><use href="#icon-light" /></svg><span>心光</span><span class="wordmark-en">INNER LIGHT</span></a>
-          <div class="planet-line"><h2 id="planetName">同频宇宙</h2><p id="saveStatus" class="save-status" role="status">连接公共星球中…</p></div>
         </div>
         <nav class="scene-tools" aria-label="探索星球">
           <button id="libraryBtn" type="button" aria-label="公共词库" aria-haspopup="dialog" title="公共词库"><svg class="icon" aria-hidden="true"><use href="#icon-library" /></svg><span>词库</span></button>
@@ -45,7 +43,7 @@
       </header>
 
       <section class="universe" aria-label="互动文字星球">
-        <div id="sphereStage" class="sphere-stage" tabindex="0" role="region" aria-label="旋转词球。拖动或使用方向键旋转。">
+        <div id="sphereStage" class="sphere-stage" tabindex="0" role="region" aria-label="旋转词球。拖动星球旋转。">
           <div class="ambient-glow" aria-hidden="true"></div>
           <div id="particleLayer" class="particle-layer" aria-hidden="true"></div>
           <div id="wordLayer" class="word-layer"></div>
@@ -61,15 +59,14 @@
         <p class="introduction-copy">把此刻的念头，送进同一片星空。</p>
         <form id="wordForm" class="composer" novalidate>
           <label class="sr-only" for="wordInput">想送进星球的文字，最多 20 个字</label>
-          <input id="wordInput" type="text" placeholder="此刻，你在想什么？" autocomplete="off" spellcheck="false" aria-describedby="inputHelp feedback" />
+          <input id="wordInput" type="text" placeholder="此刻，你在想什么？" autocomplete="off" spellcheck="false" aria-describedby="feedback" />
           <span id="charCount" class="char-count" aria-hidden="true">0 / 20</span>
           <button id="sendBtn" class="send-button" type="submit"><span>发射</span><svg class="icon" aria-hidden="true"><use href="#icon-arrow" /></svg></button>
         </form>
-        <p id="inputHelp" class="input-help">内容公开 · Enter 发射 · 最多 20 字</p>
         <p id="feedback" class="feedback" role="status" aria-live="polite" aria-atomic="true"></p>
       </section>
 
-      <aside class="gesture-note" aria-label="星球操作提示"><p id="interactionHint">滑动星球 · 遇见同频的念头</p><span><kbd>←</kbd> <kbd>→</kbd> 方向键也能探索</span><button id="enrichBtn" type="button" aria-label="刷新公共星球" title="刷新公共星球"><svg class="icon" aria-hidden="true"><use href="#icon-refresh" /></svg><span>刷新星球</span></button></aside>
+      <aside class="gesture-note" aria-label="星球操作提示"><p id="interactionHint">滑动星球 · 遇见同频的念头</p></aside>
 
       <footer class="scene-footer">
         <dl class="orbit-stats" aria-label="星球动态">
@@ -92,8 +89,7 @@
       <div id="libraryList" class="library-list"></div>
       <p id="librarySummary" class="library-summary" role="status" aria-live="polite"></p>
       <p id="libraryFeedback" role="status" aria-live="polite" aria-atomic="true"></p>
-      <div class="dialog-footer"><button id="resetBtn" class="quiet-button" type="button">刷新词库</button><button id="clearBtn" class="quiet-button" type="button">完成</button></div>
-      <div id="confirmPanel" class="confirm-panel" hidden><p id="confirmText"></p><div><button id="cancelAction" class="quiet-button" type="button">取消</button><button id="confirmAction" aria-describedby="confirmText" class="danger-button" type="button">确认</button></div></div>
+      <div class="dialog-footer"><button id="clearBtn" class="quiet-button" type="button">完成</button></div>
     </dialog>
     <div id="shareToast" class="share-toast" role="status" aria-live="polite" hidden>星球链接已复制</div>
     <noscript><div class="noscript-notice">请启用 JavaScript，让文字星球开始旋转。</div></noscript>

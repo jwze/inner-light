@@ -2,7 +2,7 @@
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
-  let configuration = {}, shareDialog, insightsDialog, outboxDialog, shareQR, poster, insightVersion = 0;
+  let configuration = {}, shareDialog, insightsDialog, outboxDialog, poster, insightVersion = 0;
   const SVG = 'http://www.w3.org/2000/svg';
   function node(tag, text, className) {
     const el = document.createElement(tag);
@@ -29,7 +29,7 @@
       try { const candidate = new URL(provided.url, location.href); if (candidate.origin === location.origin) url = candidate; } catch (_) { /* use this page */ }
     }
     return {
-      slug, name: String(provided.name || $('planetName')?.textContent || '心光星球'), url: url.href,
+      slug, name: String(provided.name || '心光星球'), url: url.href,
       stats: provided.stats || {
         totalSubmissions: $('totalCount')?.textContent || 0,
         todaySubmissions: $('todayCount')?.textContent || 0,
@@ -149,54 +149,38 @@
     if (!shareDialog) {
       shareDialog = dialog('shareToolsDialog', '分享星球');
       shareDialog.classList.add('ext-share-dialog');
-      shareDialog.dataset.preview = 'poster';
       const preview = node('div', undefined, 'ext-share-preview');
-      const switcher = node('div', undefined, 'ext-share-switcher');
-      switcher.setAttribute('role', 'group'); switcher.setAttribute('aria-label', '选择分享预览');
-      const qrPanel = node('section', undefined, 'ext-share-qr'); qrPanel.id = 'shareQRPanel'; qrPanel.setAttribute('aria-label', '星球二维码');
-      const posterPanel = node('section', undefined, 'ext-share-poster'); posterPanel.id = 'sharePosterPanel'; posterPanel.setAttribute('aria-label', '星球海报');
-      const qrFrame = node('div', undefined, 'ext-share-image'), posterFrame = node('div', undefined, 'ext-share-image');
-      shareQR = node('canvas'); shareQR.setAttribute('role', 'img'); shareQR.setAttribute('aria-label', '星球二维码');
+      const posterPanel = node('section', undefined, 'ext-share-poster'); posterPanel.setAttribute('aria-label', '星球海报');
+      const posterFrame = node('div', undefined, 'ext-share-image');
+      // The QR canvas is only used inside the poster, never added to the dialog.
+      const posterQR = node('canvas');
       poster = node('canvas'); poster.setAttribute('role', 'img'); poster.setAttribute('aria-label', '星球海报');
-      qrFrame.append(shareQR); posterFrame.append(poster);
+      posterFrame.append(poster); posterPanel.append(posterFrame); preview.append(posterPanel);
       const message = status(), fallback = node('input'); fallback.type = 'url'; fallback.readOnly = true; fallback.hidden = true; fallback.className = 'ext-url'; fallback.setAttribute('aria-label', '星球链接');
       const downloadStatus = { set textContent(value) { message.textContent = value.startsWith('图片已生成') ? '图片已生成' : value; } };
       const actions = node('div', undefined, 'ext-actions ext-share-actions');
-      const qrDownload = button('下载二维码 ↓', () => download(shareQR, 'inner-light-qr.png', downloadStatus), 'ext-button ext-share-qr-download');
       const posterDownload = button('保存海报 ↓', () => download(poster, 'inner-light-poster.png', downloadStatus), 'ext-button ext-share-primary');
       const generate = async () => {
         const current = state(), snapshot = captureSphere(current.sphereElement);
         shareDialog.dataset.url = current.url;
         fallback.hidden = true;
-        qrDownload.disabled = posterDownload.disabled = refresh.disabled = true; preview.setAttribute('aria-busy', 'true'); message.textContent = '生成中…';
+        posterDownload.disabled = true; preview.setAttribute('aria-busy', 'true'); message.textContent = '生成中…';
         try {
           if (document.fonts?.ready) await document.fonts.ready;
-          await qr(shareQR, current.url);
-          // qrcode writes fixed inline dimensions; preview sizing belongs to the responsive UI.
-          shareQR.style.width = ''; shareQR.style.height = '';
-          drawPoster(poster, current, snapshot, shareQR);
-          window.InnerLightUI?.enhanceImage(shareQR, { title: '星球二维码' });
+          await qr(posterQR, current.url);
+          drawPoster(poster, current, snapshot, posterQR);
           window.InnerLightUI?.enhanceImage(poster, { title: '星球海报' });
-          message.textContent = ''; qrDownload.disabled = posterDownload.disabled = false;
+          message.textContent = ''; posterDownload.disabled = false;
         } catch (error) { message.textContent = error.message || '生成失败，请重试'; }
-        finally { refresh.disabled = false; preview.removeAttribute('aria-busy'); }
+        finally { preview.removeAttribute('aria-busy'); }
       };
-      const refresh = button('↻', generate, 'ext-button ext-share-refresh'); refresh.setAttribute('aria-label', '更新星球快照');
-      qrPanel.append(qrFrame, qrDownload); posterPanel.append(posterFrame); preview.append(qrPanel, posterPanel);
-      [['poster', '海报', posterPanel], ['qr', '二维码', qrPanel]].forEach(([key, label, panel]) => {
-        const control = button(label, () => {
-          shareDialog.dataset.preview = key;
-          Array.from(switcher.children).forEach(item => item.setAttribute('aria-pressed', String(item === control)));
-        }, 'ext-button ext-share-choice');
-        control.setAttribute('aria-controls', panel.id); control.setAttribute('aria-pressed', String(key === 'poster')); switcher.append(control);
-      });
       actions.append(posterDownload, button('复制链接', () => copyURL(shareDialog.dataset.url || state().url, message, fallback)), button('分享 ↗', async () => {
         const url = shareDialog.dataset.url || state().url;
         if (!navigator.share) { await copyURL(url, message, fallback); return; }
         try { await navigator.share({ title: state().name, text: '来我的心光星球，遇见同频的念头。', url }); message.textContent = '分享已打开'; }
         catch (error) { if (error.name !== 'AbortError') await copyURL(url, message, fallback); }
-      }, 'ext-button ext-share-native'), refresh);
-      shareDialog.append(switcher, preview, actions, fallback, message); shareDialog.generate = generate;
+      }, 'ext-button ext-share-native'));
+      shareDialog.append(preview, actions, fallback, message); shareDialog.generate = generate;
     }
     show(shareDialog); void shareDialog.generate();
   }

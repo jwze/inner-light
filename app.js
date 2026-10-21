@@ -21,7 +21,7 @@
   let serverVersion = 0;
   let publicStats = { totalSubmissions: 0, todaySubmissions: 0, activeVisitors: 0 };
   let eventSource = null;
-  let connectionState = "connecting";
+  let planetName = "同频宇宙";
   let entries = new Map();
   let nodes = [];
   let flights = [];
@@ -100,8 +100,6 @@
   let compositionEndedAt = -Infinity;
   let lastTime = null;
   let raf = 0;
-  let pendingAction = null;
-  let selectedWord = null;
   const particles = [];
   for (let index = 0; index < 160; index++) {
     const element = document.createElement("i");
@@ -124,14 +122,6 @@
     try { body = await response.json(); } catch (_) { /* empty response */ }
     if (!response.ok) throw new Error(body.message || "网络请求失败，请稍后再试。");
     return body;
-  }
-
-  function setConnection(state, message) {
-    connectionState = state;
-    const label = $("saveStatus");
-    label.textContent = message || (state === "online" ? "公共星球 · 实时同步" : state === "offline" ? "离线预览 · 未连接" : "连接公共星球中…");
-    label.classList.toggle("offline", state === "offline");
-    updateSubmitAvailability();
   }
 
   function updateRecent(items = []) {
@@ -199,7 +189,7 @@
     updateRecent(payload.recent || []);
     if (payload.planet) {
       document.documentElement.dataset.theme = payload.planet.theme || "nebula";
-      $("planetName").textContent = payload.planet.name;
+      planetName = payload.planet.name;
       document.title = `${payload.planet.name} · 心光`;
     }
     if (dialog.open) libraryList();
@@ -208,7 +198,6 @@
 
   let hasSnapshot = false;
   let submitting = false;
-  let streamConnected = false;
   function updateSubmitAvailability() {
     $("sendBtn").disabled = submitting;
   }
@@ -218,11 +207,9 @@
       const payload = await apiRequest(`/planets/${encodeURIComponent(PLANET_SLUG)}/words`);
       applyPlanetSnapshot(payload, null, !hasSnapshot);
       hasSnapshot = true;
-      setConnection("online", streamConnected ? undefined : "公共星球 · 定时同步");
       openRealtime();
       return true;
     } catch (error) {
-      setConnection("offline", "离线模式 · 可保存待发送");
       if (!hasSnapshot) {
         let cached;
         try { cached = JSON.parse(storage?.getItem(STORAGE_KEY) || "null"); } catch (_) { /* ignore invalid cache */ }
@@ -237,7 +224,6 @@
   function openRealtime() {
     if (!window.EventSource || eventSource) return;
     eventSource = new EventSource(`${API_BASE}/planets/${encodeURIComponent(PLANET_SLUG)}/events`);
-    eventSource.onopen = () => { streamConnected = true; setConnection("online"); };
     eventSource.addEventListener("message", (event) => {
       try {
         const payload = JSON.parse(event.data);
@@ -245,11 +231,9 @@
         if (payload.items) {
           applyPlanetSnapshot(payload, isNew && payload.type === "word_added" && !submitting ? payload.item.word : null);
           hasSnapshot = true;
-          setConnection("online");
         }
       } catch (_) { announce("实时数据异常，将通过定时刷新校准。", true); }
     });
-    eventSource.onerror = () => { streamConnected = false; setConnection("offline", "实时连接中断 · 正在重连"); };
   }
 
   async function submitToServer(submission) {
@@ -708,7 +692,7 @@
   }
 
   function updateMotionHint() {
-    $("interactionHint").textContent = reduced ? "已减少动态效果 · 拖动或方向键探索" : "滑动星球 · 遇见同频的念头";
+    $("interactionHint").textContent = reduced ? "已减少动态效果 · 拖动星球探索" : "滑动星球 · 遇见同频的念头";
   }
 
   function libraryList() {
@@ -747,20 +731,6 @@
     $("librarySummary").textContent = `共 ${entries.size} / ${C.MAX_WORDS} 个念头${search ? ` · 找到 ${filtered.length} 个` : ""}`;
   }
 
-  function askConfirm(action, text) {
-    pendingAction = action;
-    $("confirmText").textContent = text;
-    $("confirmPanel").hidden = false;
-    $("confirmAction").focus();
-    $("confirmPanel").scrollIntoView({ block: "nearest" });
-  }
-
-  function closeConfirm() {
-    pendingAction = null;
-    selectedWord = null;
-    $("confirmPanel").hidden = true;
-  }
-
   $("wordForm").addEventListener("submit", (event) => {
     event.preventDefault();
     if (composing || performance.now() - compositionEndedAt < 60) return;
@@ -771,9 +741,6 @@
   input.addEventListener("compositionend", () => { composing = false; compositionEndedAt = performance.now(); updateInputCount(); });
   input.addEventListener("keydown", (event) => {
     if (event.key === "Enter" && (event.isComposing || composing || event.keyCode === 229)) event.preventDefault();
-  });
-  $("enrichBtn").addEventListener("click", () => {
-    loadPlanet().then((ok) => { if (ok) announce("公共星球已刷新。"); });
   });
   layer.addEventListener("click", (event) => {
     if (performance.now() < suppressClickUntil) return;
@@ -820,18 +787,8 @@
   window.addEventListener("pointerup", releasePointer);
   window.addEventListener("pointercancel", (event) => { inertiaX = 0; inertiaY = 0; releasePointer(event); });
   stage.addEventListener("lostpointercapture", releasePointer);
-  stage.addEventListener("keydown", (event) => {
-    if (event.target !== stage) return;
-    const steps = { ArrowLeft: [0, -.18], ArrowRight: [0, .18], ArrowUp: [.18, 0], ArrowDown: [-.18, 0] };
-    if (steps[event.key]) {
-      event.preventDefault();
-      rotateView(steps[event.key][0], steps[event.key][1]);
-      wake();
-    }
-  });
 
   $("libraryBtn").addEventListener("click", () => {
-    closeConfirm();
     $("librarySearch").value = "";
     $("libraryFeedback").textContent = "";
     libraryList();
@@ -841,21 +798,9 @@
     wake();
   });
   $("closeLibrary").addEventListener("click", () => dialog.close());
-  dialog.addEventListener("close", () => { closeConfirm(); (dialog.returnValue === "reuse" ? input : $("libraryBtn")).focus({ preventScroll: true }); wake(); });
-  dialog.addEventListener("cancel", (event) => {
-    if (pendingAction) { event.preventDefault(); closeConfirm(); $("librarySearch").focus(); }
-  });
+  dialog.addEventListener("close", () => { (dialog.returnValue === "reuse" ? input : $("libraryBtn")).focus({ preventScroll: true }); wake(); });
   $("librarySearch").addEventListener("input", libraryList);
   $("clearBtn").addEventListener("click", () => dialog.close());
-  $("resetBtn").addEventListener("click", () => loadPlanet().then((ok) => { if (ok) announce("已重新加载公共星球。"); }));
-  $("cancelAction").addEventListener("click", () => { closeConfirm(); $("librarySearch").focus(); });
-  $("confirmAction").addEventListener("click", () => {
-    if (!pendingAction) return;
-    closeConfirm();
-    loadPlanet().then(() => announce("已重新加载公共星球。"));
-    libraryList();
-    $("librarySearch").focus();
-  });
 
   motionQuery.addEventListener("change", () => {
     reduced = motionQuery.matches;
@@ -875,15 +820,13 @@
     if (pointer) releasePointer({ pointerId: pointer.id });
     inertiaX = 0; inertiaY = 0;
   });
-  window.addEventListener("online", () => { setConnection("online"); loadPlanet(); });
-  window.addEventListener("offline", () => setConnection("offline", "网络已断开 · 请稍后重试"));
+  window.addEventListener("online", loadPlanet);
 
   replaceEntries(previewEntries);
   resize();
   new ResizeObserver(resize).observe(stage);
   updateMotionHint();
-  setConnection("connecting");
-  window.InnerLightExtensions.configure({ getState: () => ({ slug: PLANET_SLUG, name: $("planetName").textContent, stats: publicStats, url: location.href, sphereElement: stage }), getWords: () => persistedEntries });
+  window.InnerLightExtensions.configure({ getState: () => ({ slug: PLANET_SLUG, name: planetName, stats: publicStats, url: location.href, sphereElement: stage }), getWords: () => persistedEntries });
   window.addEventListener("innerlight:delivered", ({ detail }) => {
     if (detail.slug !== PLANET_SLUG || !detail.payload?.items) return;
     applyPlanetSnapshot(detail.payload);
