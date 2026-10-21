@@ -79,7 +79,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .install-button:hover { color: var(--accent); }
 
 /* Keep the original word projection, rotation and arrival effects. */
-.sphere-stage { position: relative; height: 100%; width: 100%; isolation: isolate; touch-action: none; cursor: grab; outline: none; }
+.sphere-stage { position: relative; height: 100%; width: 100%; isolation: isolate; touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; outline: none; }
 .sphere-stage.dragging { cursor: grabbing; touch-action: none; }
 .ambient-glow { position: absolute; left: 50%; top: 50%; width: var(--sphere-diameter, 340px); aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%; background: radial-gradient(circle at 43% 35%, #69ebe608, #6859b80a 55%, transparent 72%); pointer-events: none; }
 .particle-layer { position: absolute; inset: 0; z-index: 0; pointer-events: none; }

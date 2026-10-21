@@ -789,6 +789,11 @@
   stage.addEventListener("pointerdown", (event) => {
     if (pointer || event.button !== 0) return;
     pointer = { id: event.pointerId, x: event.clientX, y: event.clientY, startX: event.clientX, startY: event.clientY, time: event.timeStamp, dragged: false };
+    if (!event.target.closest(".word-tag")) {
+      // Empty space must keep the gesture even when the first move leaves the stage.
+      event.preventDefault();
+      try { stage.setPointerCapture(event.pointerId); } catch { /* threshold capture retries on the first drag move */ }
+    }
     inertiaX = 0; inertiaY = 0;
     wake();
   });
@@ -803,7 +808,10 @@
   }
   window.addEventListener("pointerup", releasePointer);
   window.addEventListener("pointercancel", (event) => { inertiaX = 0; inertiaY = 0; releasePointer(event); });
-  stage.addEventListener("lostpointercapture", releasePointer);
+  stage.addEventListener("lostpointercapture", (event) => {
+    // Touch capture moves from a word to the stage; that transfer is not a release.
+    if (event.target === stage) releasePointer(event);
+  });
 
   $("libraryBtn").addEventListener("click", () => {
     $("librarySearch").value = "";
