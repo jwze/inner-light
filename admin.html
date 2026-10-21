@@ -25,10 +25,10 @@
       <form id="loginForm" class="stack">
         <label>用户名<input id="loginName" autocomplete="username" required placeholder="输入管理员用户名"></label>
         <label>密码<input id="loginPassword" type="password" autocomplete="current-password" required placeholder="输入登录密码"></label>
-        <button class="primary" type="submit">登录管理台 <span aria-hidden="true">→</span></button>
+        <button class="primary" type="submit">登录管理台</button>
       </form>
       <details class="bootstrap"><summary>首次使用 / 引导令牌登录</summary><p class="muted">使用服务端 ADMIN_TOKEN 进入后，在「账户权限」创建正式所有者账户。令牌仅在本次页面内使用。</p><form id="tokenForm" class="stack"><label>引导令牌<input id="token" type="password" autocomplete="off" placeholder="ADMIN_TOKEN" required></label><button type="submit" class="secondary">使用令牌进入</button></form></details>
-      <a class="back-link" href="/">← 返回公共星球</a>
+      <a class="back-link" href="/">返回公共星球</a>
     </div></div>
   </main>
 
@@ -37,15 +37,15 @@
       <a class="brand" href="/"><span class="brand-mark">心</span><span>心光 <small>INNER LIGHT</small></span></a>
       <div class="nav-caption">工作空间</div>
       <nav aria-label="后台导航">
-        <button class="nav-item active" data-page="overview"><span aria-hidden="true">◈</span>数据概览</button>
-        <button class="nav-item" data-page="reviews"><span aria-hidden="true">✓</span>内容审核 <span id="reviewBadge" class="nav-badge">0</span></button>
-        <button class="nav-item" data-page="words"><span aria-hidden="true">▦</span>词库管理</button>
-        <button class="nav-item" data-page="planets"><span aria-hidden="true">◎</span>星球设置</button>
-        <button class="nav-item" data-page="activity"><span aria-hidden="true">≡</span>历史与日志</button>
+        <button class="nav-item active" data-page="overview"><span data-ui-icon="overview" aria-hidden="true"></span>数据概览</button>
+        <button class="nav-item" data-page="reviews"><span data-ui-icon="review" aria-hidden="true"></span>内容审核 <span id="reviewBadge" class="nav-badge">0</span></button>
+        <button class="nav-item" data-page="words"><span data-ui-icon="words" aria-hidden="true"></span>词库管理</button>
+        <button class="nav-item" data-page="planets"><span data-ui-icon="planet" aria-hidden="true"></span>星球设置</button>
+        <button class="nav-item" data-page="activity"><span data-ui-icon="history" aria-hidden="true"></span>历史与日志</button>
         <div class="nav-caption">管理</div>
-        <button class="nav-item" data-page="backup" data-owner><span aria-hidden="true">↧</span>备份恢复</button>
-        <button class="nav-item" data-page="users" data-owner><span aria-hidden="true">♙</span>账户权限</button>
-        <button class="nav-item" data-page="system" data-owner><span aria-hidden="true">⚙</span>运行状态</button>
+        <button class="nav-item" data-page="backup" data-owner><span data-ui-icon="download" aria-hidden="true"></span>备份恢复</button>
+        <button class="nav-item" data-page="users" data-owner><span data-ui-icon="users" aria-hidden="true"></span>账户权限</button>
+        <button class="nav-item" data-page="system" data-owner><span data-ui-icon="system" aria-hidden="true"></span>运行状态</button>
       </nav>
       <div class="sidebar-bottom"><span class="live-dot"></span> 心光 · 管理台<span class="sidebar-note">让管理回归简单</span></div>
     </aside>
@@ -56,22 +56,22 @@
       </header>
       <main class="content" id="mainContent">
         <div id="bootstrapNotice" class="notice" hidden>当前使用引导令牌。请在「账户权限」创建角色为「所有者」、范围为 * 的正式账户。</div>
-        <div class="page-heading"><div><span id="pageEyebrow" class="eyebrow">OVERVIEW</span><h1 id="pageTitle">数据概览</h1><p id="pageDescription" class="muted">看看这颗星球今天发生了什么。</p></div><div class="heading-actions"><span id="lastUpdated" class="small muted"></span><button id="refresh" class="secondary">↻ 刷新数据</button><a id="view" class="button primary" href="/" target="_blank" rel="noopener">访问星球 ↗</a></div></div>
+        <div class="page-heading"><div><span id="pageEyebrow" class="eyebrow">OVERVIEW</span><h1 id="pageTitle">数据概览</h1><p id="pageDescription" class="muted">看看这颗星球今天发生了什么。</p></div><div class="heading-actions"><span id="lastUpdated" class="small muted"></span><button id="refresh" class="secondary">刷新数据</button><a id="view" class="button primary" href="/" target="_blank" rel="noopener">访问星球</a></div></div>
 
         <section data-panel="overview">
           <div class="stats-grid">
             <article class="stat-card"><div class="stat-label">累计共鸣 <span class="stat-icon mint">↗</span></div><strong id="statTotal">—</strong><span class="small muted">所有已通过的真实提交</span></article>
             <article class="stat-card"><div class="stat-label">今日共鸣 <span class="stat-icon blue">☀</span></div><strong id="statToday">—</strong><span class="small muted">按 UTC 自然日统计</span></article>
             <article class="stat-card"><div class="stat-label">公开词语 <span class="stat-icon purple">▦</span></div><strong id="statWords">—</strong><span id="wordCapacity" class="small muted">—</span></article>
-            <article class="stat-card"><div class="stat-label">待审核 <span class="stat-icon amber">◷</span></div><strong id="statPending">—</strong><button class="text-button" data-goto="reviews">前往处理 →</button></article>
+            <article class="stat-card"><div class="stat-label">待审核 <span class="stat-icon amber">◷</span></div><strong id="statPending">—</strong><button class="text-button" data-goto="reviews">前往处理</button></article>
           </div>
           <div class="overview-grid">
             <article class="card"><div class="card-heading"><div><h2>共鸣趋势</h2><p class="muted small">最近 7 天的已通过提交 · UTC</p></div><span class="tag neutral">近 7 天</span></div><div id="trend" class="trend" data-image-preview data-preview-title="共鸣趋势" role="img" aria-label="最近七天共鸣趋势"></div><div class="chart-legend"><span class="legend-dot"></span>每日共鸣<span id="weeklyTotal" class="muted"></span></div></article>
-            <article class="card"><div class="card-heading"><div><h2>星球一览</h2><p class="muted small" id="overviewPlanetSlug"></p></div><span id="reviewModeTag" class="tag"></span></div><h3 id="overviewPlanetName" class="planet-name"></h3><p id="overviewDescription" class="muted planet-description"></p><dl class="detail-list"><div><dt>累计访客</dt><dd id="statVisitors">—</dd></div><div><dt>最近 15 分钟活跃访客</dt><dd id="statActive">—</dd></div><div><dt>已屏蔽词语</dt><dd id="statHidden">—</dd></div></dl><button class="secondary full-width" data-goto="planets">管理星球设置 →</button></article>
+            <article class="card"><div class="card-heading"><div><h2>星球一览</h2><p class="muted small" id="overviewPlanetSlug"></p></div><span id="reviewModeTag" class="tag"></span></div><h3 id="overviewPlanetName" class="planet-name"></h3><p id="overviewDescription" class="muted planet-description"></p><dl class="detail-list"><div><dt>累计访客</dt><dd id="statVisitors">—</dd></div><div><dt>最近 15 分钟活跃访客</dt><dd id="statActive">—</dd></div><div><dt>已屏蔽词语</dt><dd id="statHidden">—</dd></div></dl><button class="secondary full-width" data-goto="planets">管理星球设置</button></article>
           </div>
           <div class="overview-grid">
-            <article class="card"><div class="card-heading"><div><h2>热门词语</h2><p class="muted small">按词库共鸣数排序，包含示例词频</p></div><button class="text-button" data-goto="words">全部词语 →</button></div><div id="topWords" class="ranking"></div></article>
-            <article class="card"><div class="card-heading"><div><h2>最近提交</h2><p class="muted small">最新的 6 条记录</p></div><button class="text-button" data-goto="activity">查看历史 →</button></div><div id="recentList"></div></article>
+            <article class="card"><div class="card-heading"><div><h2>热门词语</h2><p class="muted small">按词库共鸣数排序，包含示例词频</p></div><button class="text-button" data-goto="words">全部词语</button></div><div id="topWords" class="ranking"></div></article>
+            <article class="card"><div class="card-heading"><div><h2>最近提交</h2><p class="muted small">最新的 6 条记录</p></div><button class="text-button" data-goto="activity">查看历史</button></div><div id="recentList"></div></article>
           </div>
         </section>
 
@@ -83,7 +83,7 @@
         </section>
 
         <section data-panel="words" hidden>
-          <div class="card table-card"><div class="card-heading"><div><h2>星球词库 <span id="wordCount" class="count"></span></h2><p class="muted small">管理公开内容、词频和屏蔽状态。手动调整词频不会增加真实提交数。</p></div><button id="addWord" class="primary" data-owner>＋ 新增词语</button></div>
+          <div class="card table-card"><div class="card-heading"><div><h2>星球词库 <span id="wordCount" class="count"></span></h2><p class="muted small">管理公开内容、词频和屏蔽状态。手动调整词频不会增加真实提交数。</p></div><button id="addWord" class="primary" data-owner>新增词语</button></div>
             <div class="filter-bar"><input id="search" type="search" placeholder="搜索词语…" aria-label="搜索词库"><select id="wordFilter" aria-label="词语状态"><option value="all">全部状态</option><option value="public">公开词语</option><option value="hidden">已屏蔽</option><option value="seed">示例词语</option></select><select id="wordSort" aria-label="词语排序"><option value="frequency">共鸣数从高到低</option><option value="name">按词语名称</option></select></div>
             <div class="batch-bar"><span id="wordSelection" class="muted small">已选 0 项</span><button id="hideSelected" class="secondary" data-review>屏蔽所选</button><button id="restoreSelected" class="secondary" data-review>恢复所选</button><button id="clear" class="text-button danger push-right" data-owner>屏蔽全部词语</button></div>
             <div class="table-scroll"><table><thead><tr><th class="checkbox-cell"><input id="selectWords" type="checkbox" aria-label="选择本页词语" data-review></th><th>词语</th><th>共鸣数</th><th>状态</th><th>来源</th><th>操作</th></tr></thead><tbody id="words"></tbody></table></div><div id="wordPagination" class="pagination"></div>
@@ -91,7 +91,7 @@
         </section>
 
         <section data-panel="planets" hidden>
-          <div class="section-heading"><h2>你的星球</h2><button id="createPlanet" class="primary" data-owner>＋ 创建星球</button></div><div id="planetCards" class="planet-grid"></div>
+          <div class="section-heading"><h2>你的星球</h2><button id="createPlanet" class="primary" data-owner>创建星球</button></div><div id="planetCards" class="planet-grid"></div>
           <form id="settingsForm" class="card"><div class="card-heading"><div><h2>当前星球设置</h2><p class="muted small">名称、介绍和主题会同步到公共页面。</p></div><span id="settingsSlug" class="tag neutral"></span></div><fieldset id="settingsFields"><div class="form-grid"><label>星球名称<input id="name" maxlength="50" required></label><label>视觉主题<select id="theme"><option value="nebula">星云 · Nebula</option><option value="ocean">海洋 · Ocean</option><option value="forest">森林 · Forest</option></select></label><label class="span-two">星球介绍<textarea id="description" maxlength="200" rows="3" placeholder="用一句话介绍这颗星球…"></textarea><span class="field-hint">最多 200 个字符</span></label></div><label class="switch-row"><input id="reviewMode" type="checkbox"><span><strong>开启提交预审</strong><small>每条新提交须经管理员通过后才会公开。第三方审核标记的内容也会进入人工审核。</small></span></label><div class="form-footer"><span id="settingsPermission" class="muted small"></span><button id="save" class="primary" type="submit">保存设置</button></div></fieldset></form>
         </section>
 
@@ -108,7 +108,7 @@
 
         <section data-panel="users" hidden>
           <div class="notice">所有者管理全部星球；审核员可审核与屏蔽；观察员只读。修改权限、密码或禁用账户会使该账户的现有会话失效。</div>
-          <form id="createUserForm" class="card"><div class="card-heading"><div><h2>创建管理员</h2><p class="muted small">房间范围填写逗号分隔的 slug；* 表示全部星球。所有者必须使用 *。</p></div></div><div class="form-grid four-columns"><label>用户名<input id="newName" autocomplete="off" pattern="[a-zA-Z0-9_-]{3,40}" placeholder="3–40 位英文、数字、_ 或 -" required></label><label>初始密码<input id="newPassword" type="password" autocomplete="new-password" minlength="12" maxlength="128" placeholder="至少 12 位" required></label><label>角色<select id="newRole"><option value="viewer">观察员</option><option value="moderator">审核员</option><option value="owner">所有者</option></select></label><label>星球范围<input id="newPlanets" value="default" required></label></div><div class="form-footer"><span class="muted small">请为每位管理员分配独立账户。</span><button class="primary" type="submit">＋ 创建账户</button></div></form>
+          <form id="createUserForm" class="card"><div class="card-heading"><div><h2>创建管理员</h2><p class="muted small">房间范围填写逗号分隔的 slug；* 表示全部星球。所有者必须使用 *。</p></div></div><div class="form-grid four-columns"><label>用户名<input id="newName" autocomplete="off" pattern="[a-zA-Z0-9_-]{3,40}" placeholder="3–40 位英文、数字、_ 或 -" required></label><label>初始密码<input id="newPassword" type="password" autocomplete="new-password" minlength="12" maxlength="128" placeholder="至少 12 位" required></label><label>角色<select id="newRole"><option value="viewer">观察员</option><option value="moderator">审核员</option><option value="owner">所有者</option></select></label><label>星球范围<input id="newPlanets" value="default" required></label></div><div class="form-footer"><span class="muted small">请为每位管理员分配独立账户。</span><button class="primary" type="submit">创建账户</button></div></form>
           <div class="card table-card"><div class="card-heading"><h2>账户与权限</h2><span id="usersCount" class="count"></span></div><div class="table-scroll"><table><thead><tr><th>账户</th><th>角色</th><th>星球范围</th><th>状态</th><th>操作</th></tr></thead><tbody id="users"></tbody></table></div></div>
         </section>
 
@@ -123,14 +123,14 @@
 
   <dialog id="wordDialog" class="ui-dialog admin-editor" aria-labelledby="wordDialogTitle">
     <form id="wordForm">
-      <div class="dialog-heading"><h2 id="wordDialogTitle">新增词语</h2><button class="icon-button" type="button" data-close="wordDialog" aria-label="关闭词语编辑">×</button></div>
+      <div class="dialog-heading"><h2 id="wordDialogTitle">新增词语</h2><button class="icon-button" type="button" data-close="wordDialog" aria-label="关闭词语编辑"><span data-ui-icon="close" aria-hidden="true"></span></button></div>
       <div class="admin-dialog-grid"><label>词语<input id="editWord" required maxlength="80" placeholder="输入词语"></label><label>共鸣数<input id="editFrequency" type="number" min="1" max="9999" step="1" required value="1"></label></div>
       <div class="dialog-actions"><button class="secondary" type="button" data-close="wordDialog">取消</button><button class="primary" type="submit">保存词语</button></div>
     </form>
   </dialog>
   <dialog id="planetDialog" class="ui-dialog admin-editor" aria-labelledby="planetDialogTitle">
     <form id="planetForm">
-      <div class="dialog-heading"><h2 id="planetDialogTitle">创建星球</h2><button class="icon-button" type="button" data-close="planetDialog" aria-label="关闭星球创建">×</button></div>
+      <div class="dialog-heading"><h2 id="planetDialogTitle">创建星球</h2><button class="icon-button" type="button" data-close="planetDialog" aria-label="关闭星球创建"><span data-ui-icon="close" aria-hidden="true"></span></button></div>
       <div class="admin-dialog-grid">
         <label class="span-two">星球地址<input id="planetSlug" pattern="[a-z0-9][a-z0-9-]{0,48}" maxlength="49" required placeholder="小写英文、数字、连字符"></label>
         <label>星球名称<input id="planetName" maxlength="50" required placeholder="给星球起个名字"></label>
@@ -143,7 +143,7 @@
   </dialog>
   <dialog id="passwordDialog" class="ui-dialog admin-editor" aria-labelledby="passwordDialogTitle">
     <form id="passwordForm">
-      <div class="dialog-heading"><h2 id="passwordDialogTitle">重置密码</h2><button class="icon-button" type="button" data-close="passwordDialog" aria-label="关闭密码重置">×</button></div>
+      <div class="dialog-heading"><h2 id="passwordDialogTitle">重置密码</h2><button class="icon-button" type="button" data-close="passwordDialog" aria-label="关闭密码重置"><span data-ui-icon="close" aria-hidden="true"></span></button></div>
       <p id="passwordUser" class="admin-dialog-account"></p>
       <label>新密码<input id="resetPassword" type="password" autocomplete="new-password" minlength="12" maxlength="128" required placeholder="12–128 位新密码"></label>
       <div class="dialog-actions"><button class="secondary" type="button" data-close="passwordDialog">取消</button><button class="primary" type="submit">更新密码</button></div>

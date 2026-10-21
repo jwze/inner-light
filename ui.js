@@ -20,6 +20,36 @@
     if (label) { el.setAttribute('aria-label', label); el.title = label; }
     return el;
   }
+  const ICON_PATHS = {
+    close: 'M6 6l12 12M18 6 6 18',
+    refresh: 'M20 7v5h-5M4 17v-5h5M6.1 6.1a8 8 0 0 1 13.2 3M17.9 17.9a8 8 0 0 1-13.2-3',
+    minus: 'M5 12h14',
+    plus: 'M5 12h14M12 5v14',
+    overview: 'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z',
+    review: 'M9 4H5v17h14V4h-4M9 3h6v4H9zM8 13l3 3 5-6',
+    words: 'M4 4h6v16H4zM14 4h6v16h-6zM4 8h6M14 8h6',
+    planet: 'M20 12a8 8 0 1 1-16 0 8 8 0 0 1 16 0ZM2 16c2 2 8 1 13-2s8-6 7-8',
+    history: 'M3 12a9 9 0 1 1 2.6 6.4M3 4v8h8M12 7v5l3 2',
+    download: 'M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5',
+    users: 'M15 7a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM5 21v-3a7 7 0 0 1 14 0v3M18 4a3 3 0 0 1 0 6M21 21v-3a8 8 0 0 0-2-5',
+    system: 'M3 4h18v12H3zM8 21h8M12 16v5M6 10h3l2-3 2 6 2-3h3'
+  };
+  function icon(name) {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('class', 'ui-icon');
+    svg.setAttribute('aria-hidden', 'true');
+    svg.setAttribute('focusable', 'false');
+    const path = document.createElementNS(svg.namespaceURI, 'path');
+    path.setAttribute('d', ICON_PATHS[name] || ICON_PATHS.close);
+    svg.append(path);
+    return svg;
+  }
+  function iconAction(name, label, className = '') {
+    const el = action('', label, className);
+    el.append(icon(name));
+    return el;
+  }
   function uid() {
     let id;
     do { id = `il-ui-${++sequence}`; } while (document.getElementById(id));
@@ -74,7 +104,7 @@
       dialog.setAttribute('role', 'alertdialog');
       const header = element('div', 'ui-dialog-header');
       const heading = element('h2', '', title);
-      const close = action('×', '关闭确认弹窗', 'ui-close');
+      const close = iconAction('close', '关闭确认弹窗', 'ui-close');
       header.append(heading, close);
       const content = element('p', 'ui-confirm-message', message);
       if (message) { content.id = uid(); dialog.setAttribute('aria-describedby', content.id); }
@@ -239,7 +269,7 @@
     const heading = element('h2', 'ui-media-title', mediaTitle(origin, title));
     heading.id = uid(); dialog.setAttribute('aria-labelledby', heading.id);
     const header = element('header', 'ui-media-header');
-    const close = action('×', '关闭全屏预览', 'ui-media-close'); close.autofocus = true;
+    const close = iconAction('close', '关闭全屏预览', 'ui-media-close'); close.autofocus = true;
     header.append(heading, close);
     const stage = element('div', 'ui-media-stage');
     stage.setAttribute('role', 'img'); stage.setAttribute('aria-label', mediaTitle(origin, title));
@@ -248,8 +278,8 @@
     const status = element('p', 'ui-media-status', '加载中…'); status.setAttribute('role', 'status');
     stage.append(frame, status);
     const toolbar = element('div', 'ui-media-toolbar'); toolbar.setAttribute('role', 'group'); toolbar.setAttribute('aria-label', '图片缩放');
-    const minus = action('−', '缩小图片');
-    const plus = action('+', '放大图片');
+    const minus = iconAction('minus', '缩小图片');
+    const plus = iconAction('plus', '放大图片');
     const fit = action('适应屏幕', '图片适应屏幕');
     const scaleLabel = element('output', 'ui-media-scale', '100%'); scaleLabel.setAttribute('aria-label', '相对适应屏幕的缩放比例');
     toolbar.append(minus, scaleLabel, plus, fit); dialog.append(header, stage, toolbar);
@@ -391,6 +421,7 @@
     root.querySelectorAll(CANDIDATES).forEach(source => { if (!enhanced.has(source)) enhanceImage(source); });
   }
   function start() {
+    document.querySelectorAll('[data-ui-icon]').forEach(marker => marker.replaceChildren(icon(marker.dataset.uiIcon)));
     scan(document.body);
     syncModalScroll();
     document.addEventListener('close', syncModalScroll, true);
@@ -405,7 +436,7 @@
     });
     observer.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['role', 'data-image-preview', 'aria-hidden', 'hidden', 'open'] });
   }
-  Object.assign(API, { decorateDialog, confirm, preview, enhanceImage });
+  Object.assign(API, { icon, decorateDialog, confirm, preview, enhanceImage });
   window.InnerLightUI = API;
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
   else start();

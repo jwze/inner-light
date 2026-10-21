@@ -79,8 +79,8 @@
   function paged(items, key, id, render) {
     const total = Math.max(1, Math.ceil(items.length / pageSize)); pagination[key] = Math.max(1, Math.min(total, pagination[key]));
     const start = (pagination[key] - 1) * pageSize;
-    const previous = button('← 上一页', () => { pagination[key]--; render(); }, '', pagination[key] === 1);
-    const next = button('下一页 →', () => { pagination[key]++; render(); }, '', pagination[key] === total);
+    const previous = button('上一页', () => { pagination[key]--; render(); }, '', pagination[key] === 1);
+    const next = button('下一页', () => { pagination[key]++; render(); }, '', pagination[key] === total);
     $(id).replaceChildren(el('span', `共 ${formatNumber(items.length)} 条${items.length ? ` · 显示 ${start + 1}–${Math.min(start + pageSize, items.length)}` : ''}`, 'page-info'), previous, el('strong', `${pagination[key]} / ${total}`), next);
     return items.slice(start, start + pageSize);
   }

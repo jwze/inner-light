@@ -13,6 +13,12 @@
   function button(text, action, className = 'ext-button') {
     const el = node('button', text, className); el.type = 'button'; el.addEventListener('click', action); return el;
   }
+  function iconButton(name, label, action, className) {
+    const el = button('', action, className);
+    el.append(window.InnerLightUI.icon(name));
+    el.setAttribute('aria-label', label); el.title = label;
+    return el;
+  }
   function svg(tag, attributes = {}, text) {
     const el = document.createElementNS(SVG, tag);
     Object.entries(attributes).forEach(([key, value]) => el.setAttribute(key, String(value)));
@@ -43,7 +49,7 @@
     const el = node('dialog', undefined, 'ext-dialog ui-dialog'); el.id = id; el.setAttribute('aria-labelledby', `${id}Title`);
     const heading = node('div', undefined, 'ext-heading');
     const name = node('h2', title); name.id = `${id}Title`;
-    const close = button('×', () => el.close(), 'ext-close'); close.setAttribute('aria-label', `关闭${title}`); close.autofocus = true;
+    const close = iconButton('close', `关闭${title}`, () => el.close(), 'ext-close'); close.autofocus = true;
     heading.append(name, close); el.append(heading);
     window.InnerLightUI?.decorateDialog(el);
     el.addEventListener('click', event => { if (event.target === el) { const rect = el.getBoundingClientRect(); if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) el.close(); } });
@@ -159,7 +165,7 @@
       const message = status(), fallback = node('input'); fallback.type = 'url'; fallback.readOnly = true; fallback.hidden = true; fallback.className = 'ext-url'; fallback.setAttribute('aria-label', '星球链接');
       const downloadStatus = { set textContent(value) { message.textContent = value.startsWith('图片已生成') ? '图片已生成' : value; } };
       const actions = node('div', undefined, 'ext-actions ext-share-actions');
-      const posterDownload = button('保存海报 ↓', () => download(poster, 'inner-light-poster.png', downloadStatus), 'ext-button ext-share-primary');
+      const posterDownload = button('保存海报', () => download(poster, 'inner-light-poster.png', downloadStatus), 'ext-button ext-share-primary');
       const generate = async () => {
         if (preview.getAttribute('aria-busy') === 'true') return;
         const current = state(), snapshot = captureSphere(current.sphereElement);
@@ -175,9 +181,8 @@
         } catch (error) { message.textContent = error.message || '生成失败，请重试'; }
         finally { refresh.disabled = false; preview.removeAttribute('aria-busy'); }
       };
-      const refresh = button('↻', generate, 'ext-button ext-share-refresh');
-      refresh.setAttribute('aria-label', '刷新海报'); refresh.title = '刷新海报';
-      actions.append(posterDownload, button('复制链接', () => copyURL(shareDialog.dataset.url || state().url, message, fallback)), button('分享 ↗', async () => {
+      const refresh = iconButton('refresh', '刷新海报', generate, 'ext-button ext-share-refresh');
+      actions.append(posterDownload, button('复制链接', () => copyURL(shareDialog.dataset.url || state().url, message, fallback)), button('分享', async () => {
         const url = shareDialog.dataset.url || state().url;
         if (!navigator.share) { await copyURL(url, message, fallback); return; }
         try { await navigator.share({ title: state().name, text: '来我的心光星球，遇见同频的念头。', url }); message.textContent = '分享已打开'; }

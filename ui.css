@@ -73,6 +73,8 @@ dialog.ui-dialog :is(.ext-heading, .dialog-heading, .ui-dialog-header) h2 {
   color: var(--ui-text);
 }
 .ui-dialog :is(h3, h4) { font-size: 17px; }
+.ui-icon { display: block; width: 18px; height: 18px; flex: 0 0 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+[data-ui-icon] { display: inline-flex; align-items: center; justify-content: center; }
 .ui-dialog .ui-title-icon {
   display: inline-block;
   margin-right: .65em;
